@@ -15,14 +15,13 @@ const remark = require('remark');
  * 
  * @return {Object} Returns an AST as an object, based on the format defined in remark-parse.
  */
-let getAST = function(filename, outputFile="tree.txt"){
+let getAST = function(filename, outputFile="tree.json"){
     //import test markdown file
     let mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
-
     // parse into AST with remark
     let tree = remark.parse(mk);
     // write to file for human readibility
-    fs.writeFile(outputFile, JSON.stringify(tree, null, 3), function(err) {
+    fs.writeFileSync(outputFile, JSON.stringify(tree, null, 3), function(err) {
         if (err) {
             console.log(err);
         }
@@ -44,7 +43,7 @@ let getAST = function(filename, outputFile="tree.txt"){
  * 
  * @return {Object} Returns a JSON object, exact format still in progress.
  */
-let exportJSON = function(children, outputFile="root.txt"){
+let exportJSON = function(children, outputFile="root.json"){
     // This will be the JSON to export
     let rootJSON = {
         type: 'root',
@@ -74,21 +73,29 @@ let parseListItem = function(listItem){
 }
 
 let main = function(){
-    let tree = getAST("test.md");
+    let tree = getAST("test_de.md");
     let children = [];  // This will go into root object later
     let currentDepth = 3;
 
-    // start from 4 to skip index and meta-lists
+    // find index to skip index and meta-lists
+    // probably could be done better, review later
     // TODO: IMPLEMENT FORMAT FOR META-LISTS
-    for(let i = 4; i < tree.length; i++){
+    let i=0, count = 0;
+    for(i; i < tree.length; i++){
+        if(tree[i].type=='heading' && tree[i].depth=='3')
+            count++;
+        if(count == 2)
+            break;
+    }
+    for(i; i < tree.length; i++){
         if(tree[i].type == "heading"){  // If any kind of section heading
             if(tree[i].depth == 3){ // Make a new child of the root
-                currentDepth = tree[i].depth;
+                currentDepth = 3;
                 let newGroup = {group: tree[i].children[0].value, entries: [], subsections: []};
                 children.push(newGroup);
             }
             else if(tree[i].depth == 4){    // Make a subsection of last group
-                currentDepth = tree[i].depth;
+                currentDepth = 4;
                 let newSubsection = {group: tree[i].children[0].value, entries: []}
                 children[children.length-1].subsections.push(newSubsection);    // Push subsection to most recently added element.
             }
@@ -97,7 +104,15 @@ let main = function(){
             for(let j = 0; j < tree[i].children.length; j++){   //for each listItem
                 let content = tree[i].children[j].children[0].children; //This starts at "type: link" for most entries. Needs parsing tho
                 if(currentDepth == 3){
-                    children[children.length-1].entries.push(parseListItem(content));
+                    try{
+                        children[children.length-1].entries.push(parseListItem(content));
+                    }
+                    catch(e){
+                        console.log(children[children.length-1]);
+                        // console.log(tree[i]);
+                        console.log("error");
+                        return 1;
+                    }
                 }
                 else if(currentDepth == 4){
                     let lastChild = children.length-1;  // Index of last added h3 Group
