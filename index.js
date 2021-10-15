@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const remark = require('remark');
+const languages = require('./languages')
 
 /**
  * Parses markdown from a file and returns an AST.
@@ -17,8 +18,9 @@ const remark = require('remark');
  */
 let getAST = function(filename, outputFile="tree.json"){
     //import test markdown file
+    let mk;
     try{
-        let mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
+        mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
     }
     catch(e){
         throw new Error("Could not open input file. Make sure the file exists.");
@@ -48,10 +50,13 @@ let getAST = function(filename, outputFile="tree.json"){
  * 
  * @return {Object} Returns a JSON object, exact format still in progress.
  */
-let exportJSON = function(children, outputFile="root.json"){
+let exportJSON = function(children, langCode, mediaType, outputFile="root.json"){
     // This will be the JSON to export
     let rootJSON = {
         type: 'root',
+        langCode: langCode,
+        language: languages[langCode],
+        mediaType: mediaType,
         children: children
     };
     fs.writeFile(outputFile, JSON.stringify(rootJSON, null, 3), function(err) {
@@ -77,8 +82,8 @@ let parseListItem = function(listItem){
     return "NEEDS TO BE IMPLEMENTED";
 }
 
-let main = function(args){
-    let tree = getAST(args[0]);
+let main = function(inputFile, langCode, mediaType, outputFile){
+    let tree = getAST(inputFile);
     let children = [];  // This will go into root object later
     let currentDepth = 3;
 
@@ -128,15 +133,23 @@ let main = function(args){
             }
         }
     }
-    let rootJSON = exportJSON(children, args[1]);
+    let rootJSON = exportJSON(children, langCode, mediaType, outputFile);
 }
 
 let usageMessage = "Usage:\n node index.js [input_file] [output_file]\n"
 let args = process.argv.slice(2);
 if(args.length < 1)
-    throw new SyntaxError(`Please provide an input filename.\n${usageMessage}`);
+    throw new Error(`Please provide an input filename.\n${usageMessage}`);
 if(args.length > 2)
-    throw new SyntaxError(`Too many arguments.\n${usageMessage}`);
+    throw new Error(`Too many arguments.\n${usageMessage}`);
 if(args.length == 1)
     args[1] = "root.json";
-main(args);
+let fileRegex= /\S+-\S+.md/;
+if(!fileRegex.test(args[0]))
+    throw new Error(`Wrong filename format. Input must be in the format 'free-media-type-languageCode.md`);
+let splitPoint = args[0].lastIndexOf("-");
+let langCode = args[0].substring(splitPoint + 1, args[0].length-3);
+if(!languages.hasOwnProperty(langCode))
+    throw new Error('The language code must be in the ISO 639-1 set.');
+let mediaType = args[0].substring(0, splitPoint);
+main(args[0], langCode, mediaType, args[1]);
