@@ -17,7 +17,12 @@ const remark = require('remark');
  */
 let getAST = function(filename, outputFile="tree.json"){
     //import test markdown file
-    let mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
+    try{
+        let mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
+    }
+    catch(e){
+        throw new Error("Could not open input file. Make sure the file exists.");
+    }
     // parse into AST with remark
     let tree = remark.parse(mk);
     // write to file for human readibility
@@ -72,8 +77,8 @@ let parseListItem = function(listItem){
     return "NEEDS TO BE IMPLEMENTED";
 }
 
-let main = function(){
-    let tree = getAST("test_de.md");
+let main = function(args){
+    let tree = getAST(args[0]);
     let children = [];  // This will go into root object later
     let currentDepth = 3;
 
@@ -123,8 +128,15 @@ let main = function(){
             }
         }
     }
-    let rootJSON = exportJSON(children);
+    let rootJSON = exportJSON(children, args[1]);
 }
 
-main();
-// getAST("test.md");
+let usageMessage = "Usage:\n node index.js [input_file] [output_file]\n"
+let args = process.argv.slice(2);
+if(args.length < 1)
+    throw new SyntaxError(`Please provide an input filename.\n${usageMessage}`);
+if(args.length > 2)
+    throw new SyntaxError(`Too many arguments.\n${usageMessage}`);
+if(args.length == 1)
+    args[1] = "root.json";
+main(args);
