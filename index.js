@@ -79,7 +79,13 @@ let exportJSON = function(children, langCode, mediaType, outputFile="root.json")
  * @return {Object} Returns an Object containing details about the piece of media Exact format TBD.
  */
 let parseListItem = function(listItem){
-    return "NEEDS TO BE IMPLEMENTED";
+    // console.log(listItem);
+    let entry = {};
+    const link = listItem[0];
+    entry.url = link.url;
+    entry.title = link.children[0].value;
+    // remember to get OTHER STUFF!! remember there may be multiple links!
+    return entry;
 }
 
 let main = function(inputFile, langCode, mediaType, outputFile){
@@ -119,7 +125,6 @@ let main = function(inputFile, langCode, mediaType, outputFile){
                     }
                     catch(e){
                         console.log(children[children.length-1]);
-                        // console.log(tree[i]);
                         console.log("error");
                         return 1;
                     }
