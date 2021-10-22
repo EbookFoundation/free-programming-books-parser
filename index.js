@@ -3,70 +3,13 @@ const path = require('path');
 const remark = require('remark');
 const languages = require('./languages')
 
-/**
- * Parses markdown from a file and returns an AST.
- *
- * Parses markdown into an AST from a markdown document using remark-parse format,
- * and additionally writes the AST to a text file in JSON. 
- *
- * @see  remark.parse
- * 
- * @param {string}   filename - The filename of the markdown file to parse, in local context.
- * @param {string}  [outputFile=tree.txt] - The filename of the text file to write out to, in local context.
- * 
- * @return {Object} Returns an AST as an object, based on the format defined in remark-parse.
- */
-let getAST = function(filename, outputFile="tree.json"){
-    //import test markdown file
-    let mk;
-    try{
-        mk = fs.readFileSync(path.join(__dirname, filename), "utf8");
-    }
-    catch(e){
-        throw new Error("Could not open input file. Make sure the file exists.");
-    }
-    // parse into AST with remark
-    let tree = remark.parse(mk);
-    // write to file for human readibility
-    fs.writeFileSync(outputFile, JSON.stringify(tree, null, 3), function(err) {
-        if (err) {
-            console.log(err);
-        }
-    });
 
-    // This is where actual content starts
-    tree = tree.children;
-    return tree;
-}
-
-/**
- * Given an array of JSON objects, adds it to an object and exports to a text file.
- * 
- * Given an array of JSON objects, adds it to an object and exports to a text file.
- * Additionally, writes the JSON object to a text file.
- * 
- * @param {Object}  children - The array full of Objects to insert into the root object.
- * @param {string}  [outputFile=root.txt] - The name of the text file to write to, in local context.
- * 
- * @return {Object} Returns a JSON object, exact format still in progress.
- */
-let exportJSON = function(children, langCode, mediaType, outputFile="root.json"){
-    // This will be the JSON to export
-    let rootJSON = {
-        type: 'root',
-        langCode: langCode,
-        language: languages[langCode],
-        mediaType: mediaType,
-        children: children
-    };
-    fs.writeFile(outputFile, JSON.stringify(rootJSON, null, 3), function(err) {
-        if (err) {
-            console.log(err);
-        }
-    });
-    return rootJSON;
-}
-
+const excludes = [
+    'README.md',
+    'CONTRIBUTING.md',
+    'CODE_OF_CONDUCT.md',
+    'SUMMARY.md'
+]
 
 // TODO!!
 /**
@@ -79,7 +22,6 @@ let exportJSON = function(children, langCode, mediaType, outputFile="root.json")
  * @return {Object} Returns an Object containing details about the piece of media Exact format TBD.
  */
 let parseListItem = function(listItem){
-    // console.log(listItem);
     let entry = {};
     const link = listItem[0];
     entry.url = link.url;
@@ -88,14 +30,38 @@ let parseListItem = function(listItem){
     return entry;
 }
 
-let main = function(inputFile, langCode, mediaType, outputFile){
-    let tree = getAST(inputFile);
+// from free-programming-books-lint
+function getLangFromFilename (filename) {
+    const dash = filename.lastIndexOf('-')
+    const dot = filename.lastIndexOf('.')
+    let lang = filename.slice(dash + 1, dot).replace(/_/, '-')
+    if (!languages.hasOwnProperty(lang)) {
+      if (/^[a-z]{2}$/.test(lang) || /^[a-z]{2}-[A-Z]{2}$/.test(lang)) {
+        return ''
+      }
+      lang = 'en-US'
+    }
+    return lang
+}
+
+// from free-programming-books-lint
+function getFilesFromDir (dir) {
+    return fs.readdirSync(dir).filter(file => path.extname(file) === '.md' && excludes.indexOf(file) === -1).map(file => path.join(dir, file))
+}
+
+function getMediaFromDirectory(dir){
+    const slash = dir.lastIndexOf('/');
+    let mediaType = dir.slice(2, slash);
+    return mediaType;
+}
+
+let parseMarkdown = function(doc){
+    let tree = remark.parse(doc).children;
     let children = [];  // This will go into root object later
     let currentDepth = 3;
 
-    // find index to skip index and meta-lists
+    // find where Index ends
     // probably could be done better, review later
-    // TODO: IMPLEMENT FORMAT FOR META-LISTS
     let i=0, count = 0;
     for(i; i < tree.length; i++){
         if(tree[i].type=='heading' && tree[i].depth=='3')
@@ -103,58 +69,94 @@ let main = function(inputFile, langCode, mediaType, outputFile){
         if(count == 2)
             break;
     }
-    for(i; i < tree.length; i++){
-        if(tree[i].type == "heading"){  // If any kind of section heading
-            if(tree[i].depth == 3){ // Make a new child of the root
+
+    tree.slice(i).forEach( (item) => {
+        if(item.type == "heading" && item.children[0].value == 'Index')
+            return;
+
+        if(item.type == "heading"){
+            if(item.depth == 3){
                 currentDepth = 3;
-                let newGroup = {group: tree[i].children[0].value, entries: [], subsections: []};
+                let newGroup = {group: item.children[0].value, entries: [], subsections: []};
                 children.push(newGroup);
             }
-            else if(tree[i].depth == 4){    // Make a subsection of last group
+            else if(item.depth == 4){
                 currentDepth = 4;
-                let newSubsection = {group: tree[i].children[0].value, entries: []}
-                children[children.length-1].subsections.push(newSubsection);    // Push subsection to most recently added element.
+                let newSubsection = {group: item.children[0].value, entries: []};
+                children[children.length-1].subsections.push(newSubsection);
             }
         }
-        else if(tree[i].type == "list"){
-            for(let j = 0; j < tree[i].children.length; j++){   //for each listItem
-                let content = tree[i].children[j].children[0].children; //This starts at "type: link" for most entries. Needs parsing tho
+        else if(item.type == 'list'){
+            item.children.forEach( (listItem) => {
+                let content = listItem.children[0].children;
+                if(content[0].type !== 'link'){ // SKIPS OVER bad formatting
+                    return;
+                }
                 if(currentDepth == 3){
-                    try{
-                        children[children.length-1].entries.push(parseListItem(content));
-                    }
-                    catch(e){
-                        console.log(children[children.length-1]);
-                        console.log("error");
-                        return 1;
-                    }
+                    let contentJson = parseListItem(content);
+                    children[children.length-1].entries.push(contentJson);
                 }
                 else if(currentDepth == 4){
-                    let lastChild = children.length-1;  // Index of last added h3 Group
-                    let lastSubSec = children[lastChild].subsections.length-1;  // Index of last added h4 group
-                    // TODO: parse into subobject containing title, author, link, etc.
-                    children[lastChild].subsections[lastSubSec].entries.push(parseListItem(content)); // push to entries of last h4 group
+                    let lastChild = children.length-1;
+                    let lastSubSec = children[lastChild].subsections.length-1;
+                    let contentJson = parseListItem(content);
+                    children[lastChild].subsections[lastSubSec].entries.push(contentJson);
                 }
-            }
+            });
         }
-    }
-    let rootJSON = exportJSON(children, langCode, mediaType, outputFile);
+    });
+    return children;
 }
 
-let usageMessage = "Usage:\n node index.js [input_file] [output_file]\n"
-let args = process.argv.slice(2);
-if(args.length < 1)
-    throw new Error(`Please provide an input filename.\n${usageMessage}`);
-if(args.length > 2)
-    throw new Error(`Too many arguments.\n${usageMessage}`);
-if(args.length == 1)
-    args[1] = "root.json";
-let fileRegex= /\S+-\S+.md/;
-if(!fileRegex.test(args[0]))
-    throw new Error(`Wrong filename format. Input must be in the format 'free-media-type-languageCode.md`);
-let splitPoint = args[0].lastIndexOf("-");
-let langCode = args[0].substring(splitPoint + 1, args[0].length-3);
-if(!languages.hasOwnProperty(langCode))
-    throw new Error('The language code must be in the ISO 639-1 set.');
-let mediaType = args[0].substring(0, splitPoint);
-main(args[0], langCode, mediaType, args[1]);
+function parseDirectory(directory){
+    let dirChildren = [];
+    
+    let mediaType = getMediaFromDirectory(directory);
+    const filenames = getFilesFromDir(path.resolve(directory));
+    filenames.forEach((filename) => {
+        const doc = fs.readFileSync(filename);
+        let children = parseMarkdown(doc);
+        const langCode = getLangFromFilename(filename);
+        let docJson = {
+            language: {
+                code: langCode,
+                name: languages[langCode],
+            },
+            index: {
+                
+            },
+            children: children
+        };
+        dirChildren.push(docJson);
+    });
+    let dirJson = {
+        type: mediaType,
+        index: {
+
+        },
+        children: dirChildren
+    };
+    return dirJson
+}
+
+function parseAll(dirArray){
+    let rootChildren = [];
+
+    dirArray.forEach( (directory) => {
+        let dirJson = parseDirectory(directory);
+        rootChildren.push(dirJson);
+    });
+    let rootJson = {
+        type: 'root',
+        children: rootChildren
+    }
+    fs.writeFile('root.json', JSON.stringify(rootJson, null, 3), function(err) {
+        if (err) {
+            console.log(err);
+        }
+    });
+}
+
+console.time('Parse Time')
+parseAll(['./books/']);
+console.timeEnd('Parse Time');

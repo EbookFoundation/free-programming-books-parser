@@ -42,6 +42,7 @@ const languages = {
     'nl': 'Dutch, Flemish',
     'dz': 'Dzongkha',
     'en': 'English',
+    'en-US': 'English',
     'eo': 'Esperanto',
     'et': 'Estonian',
     'ee': 'Ewe',
