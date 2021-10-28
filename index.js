@@ -71,7 +71,8 @@ let parseMarkdown = function(doc){
     }
 
     tree.slice(i).forEach( (item) => {
-        if(item.type == "heading" && item.children[0].value == 'Index')
+        try { 
+            if(item.type == "heading" && item.children[0].value == 'Index')
             return;
 
         if(item.type == "heading"){
@@ -89,9 +90,9 @@ let parseMarkdown = function(doc){
         else if(item.type == 'list'){
             item.children.forEach( (listItem) => {
                 let content = listItem.children[0].children;
-                if(content[0].type !== 'link'){ // SKIPS OVER bad formatting
-                    return;
-                }
+                // if(content[0].type !== 'link'){ // SKIPS OVER bad formatting
+                //     return;
+                // }
                 if(currentDepth == 3){
                     let contentJson = parseListItem(content);
                     children[children.length-1].entries.push(contentJson);
@@ -103,6 +104,15 @@ let parseMarkdown = function(doc){
                     children[lastChild].subsections[lastSubSec].entries.push(contentJson);
                 }
             });
+        }
+        } catch (e) {
+            // if there was an error while parsing, print the error to an error log
+            // looks really ugly, maybe try to refine output later
+            str = JSON.stringify(item);
+            fs.appendFileSync("errorlog.txt", `${str} had an error while parsing.\n`, (err) => {
+                if (err)
+                console.log(err);
+               });
         }
     });
     return children;
