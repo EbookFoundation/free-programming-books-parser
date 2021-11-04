@@ -3,7 +3,6 @@ const path = require('path');
 const remark = require('remark');
 const languages = require('./languages')
 
-
 const excludes = [
     'README.md',
     'CONTRIBUTING.md',
