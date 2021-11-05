@@ -123,7 +123,6 @@ let parseMarkdown = function(doc){
             // errors.push(str)
         }
     });
-    console.log(sections);
     return sections;
 }
 
@@ -133,7 +132,6 @@ function parseDirectory(directory){
     let mediaType = getMediaFromDirectory(directory);
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
-        console.log(filename);
         const doc = fs.readFileSync(filename);
         let sections = parseMarkdown(doc); // parse the markdown document
         const langCode = getLangFromFilename(filename);
