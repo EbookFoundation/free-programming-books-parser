@@ -159,9 +159,9 @@ function parseAll(dirArray){
     dirArray.forEach( (directory) => {
         let dirJson = parseDirectory(directory);
         rootChildren.push(dirJson);
-        if (errors.length !== 0) {
-            errors_array.push(errors)
-        }
+        // if (errors.length !== 0) {
+        //     errors_array.push(errors)
+        // }
     });
     let rootJson = {
         type: 'root',
