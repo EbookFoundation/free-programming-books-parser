@@ -59,6 +59,7 @@ function getMediaFromDirectory(dir){
 let parseMarkdown = function(doc){
     let tree = remark.parse(doc).children;
     let children = [];  // This will go into root object later
+    let errors = [];
     let currentDepth = 3;
 
     // find where Index ends
@@ -109,14 +110,13 @@ let parseMarkdown = function(doc){
         } catch (e) {
             // if there was an error while parsing, print the error to an error log
             // looks really ugly, maybe try to refine output later
-            // str = JSON.stringify(item);
-            // fs.appendFileSync("errorlog.txt", `${str} had an error while parsing.\n`, (err) => {
-            //     if (err)
-            //     console.log(err);
-            // });
+            // start_output = JSON.stringify(item.position.start)
+            // end_output = JSON.stringify(item.position.end)
+            // str = `Parser had an error while parsing the document starting at ${start_output} and ending at ${end_output}.`
+            // errors.push(str)
         }
     });
-    return children;
+    return children;//, errors;
 }
 
 function parseDirectory(directory){
@@ -126,7 +126,7 @@ function parseDirectory(directory){
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
         const doc = fs.readFileSync(filename);
-        let children = parseMarkdown(doc);
+        let children, errors = parseMarkdown(doc);
         const langCode = getLangFromFilename(filename);
         let docJson = {
             language: {
@@ -138,6 +138,9 @@ function parseDirectory(directory){
             },
             children: children
         };
+        // if (errors.length !== 0) {
+        //     dir_errors.push(errors);
+        // }
         dirChildren.push(docJson);
     });
     let dirJson = {
@@ -147,7 +150,7 @@ function parseDirectory(directory){
         },
         children: dirChildren
     };
-    return dirJson
+    return dirJson; //, dir_errors;
 }
 
 function parseAll(dirArray){
@@ -156,6 +159,9 @@ function parseAll(dirArray){
     dirArray.forEach( (directory) => {
         let dirJson = parseDirectory(directory);
         rootChildren.push(dirJson);
+        if (errors.length !== 0) {
+            errors_array.push(errors)
+        }
     });
     let rootJson = {
         type: 'root',
