@@ -58,9 +58,9 @@ function getMediaFromDirectory(dir){
 
 let parseMarkdown = function(doc){
     let tree = remark.parse(doc).children;
-    let children = [];  // This will go into root object later
+    let sections = [];  // This will go into root object later
     let errors = [];
-    let currentDepth = 3;
+    let currentDepth = 3; // used to determine if the last heading was an h4 or h3
 
     // find where Index ends
     // probably could be done better, review later
@@ -72,39 +72,45 @@ let parseMarkdown = function(doc){
             break;
     }
 
-    tree.slice(i).forEach( (item) => {
+    tree.slice(i).forEach( (item) => { // Start iterating after Index
         try { 
             if(item.type == "heading" && item.children[0].value == 'Index')
             return;
 
         if(item.type == "heading"){
-            if(item.depth == 3){
+            if(item.depth == 3){ // Heading is an h3
                 currentDepth = 3;
-                console.log(item.children[0]);
-                let newGroup = {group: item.children[0].value, entries: [], subsections: []};
-                children.push(newGroup);
+                let newSection = {
+                    section: item.children[0].value, // Get the name of the section
+                    entries: [],
+                    subsections: []
+                };
+                sections.push(newSection); // Push the section to the output array
             }
-            else if(item.depth == 4){
+            else if(item.depth == 4){ // Heading is an h4
                 currentDepth = 4;
-                let newSubsection = {group: item.children[0].value, entries: []};
-                children[children.length-1].subsections.push(newSubsection);
+                let newSubsection = {
+                    section: item.children[0].value, // Get the name of the subsection
+                    entries: []
+                };
+                sections[sections.length-1].subsections.push(newSubsection); // Add to subsection array of most recent h3
             }
         }
         else if(item.type == 'list'){
             item.children.forEach( (listItem) => {
-                let content = listItem.children[0].children;
+                let content = listItem.children[0].children; // gets array containing a remark-link and a remark-paragraph
                 // if(content[0].type !== 'link'){ // SKIPS OVER bad formatting
                 //     return;
                 // }
                 if(currentDepth == 3){
                     let contentJson = parseListItem(content);
-                    children[children.length-1].entries.push(contentJson);
+                    sections[sections.length-1].entries.push(contentJson); // add the entry to most recent h3 
                 }
                 else if(currentDepth == 4){
-                    let lastChild = children.length-1;
-                    let lastSubSec = children[lastChild].subsections.length-1;
+                    let lastSection = sections.length-1;
+                    let lastSubSec = sections[lastSection].subsections.length-1;
                     let contentJson = parseListItem(content);
-                    children[lastChild].subsections[lastSubSec].entries.push(contentJson);
+                    sections[lastSection].subsections[lastSubSec].entries.push(contentJson); // add entry to most recent h4
                 }
             });
         }
@@ -117,18 +123,19 @@ let parseMarkdown = function(doc){
             // errors.push(str)
         }
     });
-    return children, errors;
+    console.log(sections);
+    return sections;
 }
 
 function parseDirectory(directory){
-    let dirChildren = [];
+    let dirChildren = []; // this will hold the output each markdown doc
     
     let mediaType = getMediaFromDirectory(directory);
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
         console.log(filename);
         const doc = fs.readFileSync(filename);
-        let children, errors = parseMarkdown(doc);
+        let sections = parseMarkdown(doc); // parse the markdown document
         const langCode = getLangFromFilename(filename);
         let docJson = {
             language: {
@@ -138,7 +145,7 @@ function parseDirectory(directory){
             index: {
                 
             },
-            children: children
+            sections: sections
         };
         // if (errors.length !== 0) {
         //     dir_errors.push(errors);
@@ -155,10 +162,10 @@ function parseDirectory(directory){
     return dirJson; //, dir_errors;
 }
 
-function parseAll(dirArray){
-    let rootChildren = [];
+function parseAll(directories){
+    let rootChildren = []; // this will hold the output of each directory
 
-    dirArray.forEach( (directory) => {
+    directories.forEach( (directory) => {
         let dirJson = parseDirectory(directory);
         rootChildren.push(dirJson);
         // if (errors.length !== 0) {
