@@ -126,7 +126,8 @@ function parseDirectory(directory){
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
         console.log(filename);
-        const doc = fs.readFileSync(`${filename}`);
+        const doc = fs.readFileSync(filename);
+        console.log(doc);
         let children, errors = parseMarkdown(doc);
         const langCode = getLangFromFilename(filename);
         let docJson = {
@@ -168,7 +169,7 @@ function parseAll(dirArray){
         type: 'root',
         children: rootChildren
     }
-    fs.writeFile('./parser/fpb.json', JSON.stringify(rootJson, null, 3), function(err) {
+    fs.writeFileSync('./parser/fpb.json', JSON.stringify(rootJson, null, 3), function(err) {
         if (err) {
             console.log(err);
         }
