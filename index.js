@@ -58,6 +58,7 @@ function getMediaFromDirectory(dir){
 
 let parseMarkdown = function(doc){
     let tree = remark.parse(doc).children;
+    console.log(tree);
     let children = [];  // This will go into root object later
     let errors = [];
     let currentDepth = 3;
@@ -127,7 +128,6 @@ function parseDirectory(directory){
     filenames.forEach((filename) => {
         console.log(filename);
         const doc = fs.readFileSync(filename);
-        console.log(doc);
         let children, errors = parseMarkdown(doc);
         const langCode = getLangFromFilename(filename);
         let docJson = {
