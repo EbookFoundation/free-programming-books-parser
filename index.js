@@ -169,5 +169,5 @@ function parseAll(dirArray){
 }
 
 console.time('Parse Time')
-parseAll(['./books/']);
+parseAll(['./fpb/books']);
 console.timeEnd('Parse Time');
