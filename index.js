@@ -167,7 +167,7 @@ function parseAll(dirArray){
         type: 'root',
         children: rootChildren
     }
-    fs.writeFile('./parser/root.json', JSON.stringify(rootJson, null, 3), function(err) {
+    fs.writeFile('./parser/fpb.json', JSON.stringify(rootJson, null, 3), function(err) {
         if (err) {
             console.log(err);
         }
