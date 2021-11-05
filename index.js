@@ -125,7 +125,8 @@ function parseDirectory(directory){
     let mediaType = getMediaFromDirectory(directory);
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
-        const doc = fs.readFileSync(`./fpb/${filename}`);
+        console.log(filename);
+        const doc = fs.readFileSync(`${filename}`);
         let children, errors = parseMarkdown(doc);
         const langCode = getLangFromFilename(filename);
         let docJson = {
