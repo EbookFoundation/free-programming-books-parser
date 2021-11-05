@@ -58,7 +58,6 @@ function getMediaFromDirectory(dir){
 
 let parseMarkdown = function(doc){
     let tree = remark.parse(doc).children;
-    console.log(tree);
     let children = [];  // This will go into root object later
     let errors = [];
     let currentDepth = 3;
@@ -81,6 +80,7 @@ let parseMarkdown = function(doc){
         if(item.type == "heading"){
             if(item.depth == 3){
                 currentDepth = 3;
+                console.log(item.children[0]);
                 let newGroup = {group: item.children[0].value, entries: [], subsections: []};
                 children.push(newGroup);
             }
