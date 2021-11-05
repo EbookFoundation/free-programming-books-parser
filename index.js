@@ -109,11 +109,11 @@ let parseMarkdown = function(doc){
         } catch (e) {
             // if there was an error while parsing, print the error to an error log
             // looks really ugly, maybe try to refine output later
-            str = JSON.stringify(item);
-            fs.appendFileSync("errorlog.txt", `${str} had an error while parsing.\n`, (err) => {
-                if (err)
-                console.log(err);
-               });
+            // str = JSON.stringify(item);
+            // fs.appendFileSync("errorlog.txt", `${str} had an error while parsing.\n`, (err) => {
+            //     if (err)
+            //     console.log(err);
+            // });
         }
     });
     return children;
@@ -161,7 +161,7 @@ function parseAll(dirArray){
         type: 'root',
         children: rootChildren
     }
-    fs.writeFile('root.json', JSON.stringify(rootJson, null, 3), function(err) {
+    fs.writeFile('../parser/root.json', JSON.stringify(rootJson, null, 3), function(err) {
         if (err) {
             console.log(err);
         }
