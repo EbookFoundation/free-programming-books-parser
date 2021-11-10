@@ -133,24 +133,27 @@ let parseMarkdown = function (doc) {
         } catch (e) {
             // if there was an error while parsing, print the error to an error log
             // looks really ugly, maybe try to refine output later
-            // start_output = JSON.stringify(item.position.start)
-            // end_output = JSON.stringify(item.position.end)
-            // str = `Parser had an error while parsing the document starting at ${start_output} and ending at ${end_output}.`
-            // errors.push(str)
+            let errStart = JSON.stringify(item.position.start.line)
+            let errEnd = JSON.stringify(item.position.end.line)
+            str = `Error at line ${errStart} - line ${errEnd}.`
+            errors.push(str);
         }
     });
-    return sections;
+    return {sections: sections, errors: errors};
 };
 
 function parseDirectory(directory) {
     let dirChildren = []; // this will hold the output each markdown doc
+    let dirErrors = []; //contains error for a given directory
 
     let mediaType = getMediaFromDirectory(directory);
     const filenames = getFilesFromDir(path.resolve(directory));
     filenames.forEach((filename) => {
         const doc = fs.readFileSync(filename);
-        let sections = parseMarkdown(doc); // parse the markdown document
+        let { sections, errors } = parseMarkdown(doc); // parse the markdown document
         const langCode = getLangFromFilename(filename);
+
+        // Entries
         let docJson = {
             language: {
                 code: langCode,
@@ -159,35 +162,60 @@ function parseDirectory(directory) {
             index: {},
             sections: sections,
         };
-        // if (errors.length !== 0) {
-        //     dir_errors.push(errors);
-        // }
         dirChildren.push(docJson);
+        
+        // Errors
+        if (errors.length !== 0) {
+            let docErrors = {
+                file: path.basename(filename),
+                errors: errors
+            }
+            dirErrors.push(docErrors);
+        }
     });
+
+    // File entries
     let dirJson = {
         type: mediaType,
         index: {},
         children: dirChildren,
     };
-    return dirJson; //, dir_errors;
+
+    // Errors
+
+    return {dirJson: dirJson, dirErrors: dirErrors};
 }
 
 function parseAll(directories) {
     let rootChildren = []; // this will hold the output of each directory
+    let rootErrors = [];
 
     directories.forEach((directory) => {
-        let dirJson = parseDirectory(directory);
+        let { dirJson, dirErrors } = parseDirectory(directory);
         rootChildren.push(dirJson);
-        // if (errors.length !== 0) {
-        //     errors_array.push(errors)
-        // }
+        if (dirErrors.length !== 0) {
+            rootErrors.push({directory: path.basename(directory), files: dirErrors});
+        }
     });
+
+    // ALl entries
     let rootJson = {
         type: "root",
         children: rootChildren,
     };
+
+    // Errors
+    let allErrors = {
+        type: "root",
+        directories: rootErrors
+    };
     fs.writeFileSync(output, JSON.stringify(rootJson, null, 3), function (err) {
         if (err) {
+            console.log(err);
+        }
+    });
+    fs.writeFileSync('./parser/fpb.log', JSON.stringify(allErrors, null, 3), function(err) {
+        if(err){
             console.log(err);
         }
     });
