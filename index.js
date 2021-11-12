@@ -30,10 +30,33 @@ const excludes = [
  */
 let parseListItem = function (listItem) {
     let entry = {};
-    const link = listItem[0];
+    const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
     entry.url = link.url;
     entry.title = link.children[0].value;
     // remember to get OTHER STUFF!! remember there may be multiple links!
+    for (let i of otherStuff) {
+        if (i.type === "text" && i.value.slice(0,3) === " - ") {
+            // author found
+            let parenIndex = i.value.indexOf("(");
+            if (parenIndex === -1) {
+                entry.author = i.value.slice(3).trim();
+            }
+            else {
+                entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
+            }
+        }
+        if (i.type === "emphasis" &&
+                i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
+            // access notes found (currently assumes exactly one child, so far this is always the case)
+            entry.accessNotes = i.children[0].value.slice(1, -1);
+        }
+        if (i.type === "link") {
+            // other links found
+            if (entry.otherLinks === undefined) entry.otherLinks = [];
+            entry.otherLinks.push({title: i.children[0].value, url: i.url});
+            // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
+        }
+    }
     return entry;
 };
 
@@ -163,7 +186,7 @@ function parseDirectory(directory) {
             sections: sections,
         };
         dirChildren.push(docJson);
-        
+
         // Errors
         if (errors.length !== 0) {
             let docErrors = {
