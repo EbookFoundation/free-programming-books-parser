@@ -45,18 +45,18 @@ let parseListItem = function (listItem) {
                 entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
             }
         }
-        if (i.type === "emphasis" &&
+        else if (i.type === "emphasis" &&
                 i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
             // access notes found (currently assumes exactly one child, so far this is always the case)
             entry.accessNotes = i.children[0].value.slice(1, -1);
         }
-        if (i.type === "link") {
+        else if (i.type === "link") {
             // other links found
             if (entry.otherLinks === undefined) entry.otherLinks = [];
             entry.otherLinks.push({title: i.children[0].value, url: i.url});
             // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
         }
-        if (i.type === "text" && i.value.indexOf("(") !== -1) {
+        else if (i.type === "text" && i.value.indexOf("(") !== -1) {
             // notes found (currently assumes no nested parentheses)
             if (entry.notes === undefined) entry.notes = [];
             let leftParen = i.value.indexOf("(");
@@ -68,6 +68,10 @@ let parseListItem = function (listItem) {
                 entry.notes.push(i.value.slice(leftParen + 1, rightParen));
             }
             // also TODO: if theres more than one disjoint set of parens
+        } else {
+            // everything else goes into throwaway otherStuff category, we intend to parse this further
+            if (entry.otherStuff === undefined) entry.otherStuff = [];
+            entry.otherStuff.push(i.value);
         }
     }
     return entry;
