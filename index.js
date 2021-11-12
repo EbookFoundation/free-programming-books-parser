@@ -56,6 +56,19 @@ let parseListItem = function (listItem) {
             entry.otherLinks.push({title: i.children[0].value, url: i.url});
             // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
         }
+        if (i.type === "text" && i.value.indexOf("(") !== -1) {
+            // notes found (currently assumes no nested parentheses)
+            if (entry.notes === undefined) entry.notes = [];
+            let leftParen = i.value.indexOf("(");
+            let rightParen = i.value.indexOf(")", leftParen);
+            if (rightParen === -1) {
+                // there must be some *emphasis* found
+                // TODO: this
+            } else {
+                entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+            }
+            // also TODO: if theres more than one disjoint set of parens
+        }
     }
     return entry;
 };
