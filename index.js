@@ -29,45 +29,70 @@ const excludes = [
  * @return {Object} Returns an Object containing details about the piece of media Exact format TBD.
  */
 let parseListItem = function (listItem) {
+    let stripParens = function (s) {
+        if (s.slice(0,1) === "(" && s.slice(-1) === ")")
+            return s.slice(1,-1);
+        return s;
+    }
     let entry = {};
+    let s = ""; // If we need to build up a string over multiple listItem elements
     const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
     entry.url = link.url;
     entry.title = link.children[0].value;
     // remember to get OTHER STUFF!! remember there may be multiple links!
     for (let i of otherStuff) {
-        if (i.type === "text" && i.value.slice(0,3) === " - ") {
-            // author found
-            let parenIndex = i.value.indexOf("(");
-            if (parenIndex === -1) {
-                entry.author = i.value.slice(3).trim();
+        if (s === "") { // this is almost always, except for when we are parsing a multi-element note
+            if (i.type === "text" && i.value.slice(0,3) === " - ") {
+                // author found
+                let parenIndex = i.value.indexOf("(");
+                if (parenIndex === -1) {
+                    entry.author = i.value.slice(3).trim();
+                }
+                else {
+                    entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
+                }
             }
-            else {
-                entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
+            if (i.type === "emphasis" &&
+                    i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
+                // access notes found (currently assumes exactly one child, so far this is always the case)
+                entry.accessNotes = i.children[0].value.slice(1, -1);
             }
-        }
-        if (i.type === "emphasis" &&
-                i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
-            // access notes found (currently assumes exactly one child, so far this is always the case)
-            entry.accessNotes = i.children[0].value.slice(1, -1);
-        }
-        if (i.type === "link") {
-            // other links found
-            if (entry.otherLinks === undefined) entry.otherLinks = [];
-            entry.otherLinks.push({title: i.children[0].value, url: i.url});
-            // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
-        }
-        if (i.type === "text" && i.value.indexOf("(") !== -1) {
-            // notes found (currently assumes no nested parentheses)
-            if (entry.notes === undefined) entry.notes = [];
-            let leftParen = i.value.indexOf("(");
-            let rightParen = i.value.indexOf(")", leftParen);
-            if (rightParen === -1) {
-                // there must be some *emphasis* found
-                // TODO: this
+            if (i.type === "link") {
+                // other links found
+                if (entry.otherLinks === undefined) entry.otherLinks = [];
+                entry.otherLinks.push({title: stripParens(i.children[0].value), url: i.url});
+                // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
+            }
+            if (i.type === "text" && i.value.indexOf("(") !== -1 && i.value.indexOf(")") !== -1) {
+                // notes found (currently assumes no nested parentheses)
+                if (entry.notes === undefined) entry.notes = [];
+                let leftParen = i.value.indexOf("(");
+                let rightParen = i.value.indexOf(")", leftParen);
+                if (rightParen === -1) {
+                    // there must be some *emphasis* found
+                    s += i.value.slice(leftParen + 1);
+                } else {
+                    entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+                }
+                // also TODO: if theres more than one disjoint set of parens
+            }
+        } else { // for now we assume that all previous ifs are mutually exclusive with this, may polish later
+            if (i.type === "emphasis") {
+                // this is the emphasis, add it in boldface and move on
+                s += "*" + i.children[0].value + "*";
             } else {
-                entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+                // hopefully this is the end of the note
+                let rightParen = i.value.indexOf(")");
+                if (rightParen === -1) {
+                    // we have to go AGAIN
+                    s += i.value;
+                } else {
+                    // finally, we have reached the end of the note
+                    entry.notes.push(s + i.value.slice(0, rightParen));
+                    s = "";
+                    // TODO: there can be a normal note following a bold-containing note
+                }
             }
-            // also TODO: if theres more than one disjoint set of parens
         }
     }
     return entry;
