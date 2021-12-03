@@ -18,15 +18,18 @@ const excludes = [
     "SUMMARY.md",
 ];
 
-// TODO!!
 /**
- * Summary TBD.
+ * Summary - Parses a list item generated from remark-parse into a readable format.
  *
- * Desciption TBD.
+ * Desciption - remark-parse parses a markdown file into a long, intricate json.
+ *              Many fields in this json either give information we do not care
+ *              about or does not go into enough detail. This function parses the
+ *              output of remark-parse into a format more preferred by this project,
+ *              indicating authors, notes, and links etc.
  *
  * @param {Object}  listItem - a listItem in AST format defined by remark-parse
  *
- * @return {Object} Returns an Object containing details about the piece of media Exact format TBD.
+ * @return {Object} Returns an Object containing details about the piece of media.
  */
 let parseListItem = function (listItem) {
     let stripParens = function (s) {
@@ -35,7 +38,8 @@ let parseListItem = function (listItem) {
         return s;
     }
     let entry = {};
-    let s = ""; // If we need to build up a string over multiple listItem elements
+    let s = "";                     // If we need to build up a string over multiple listItem elements
+    let leftParen, rightParen = -1; // If we need to parse parenthesized text
     const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
     entry.url = link.url;
     entry.title = link.children[0].value;
@@ -66,22 +70,24 @@ let parseListItem = function (listItem) {
             if (i.type === "text" && i.value.indexOf("(") !== -1) {
                 // notes found (currently assumes no nested parentheses)
                 if (entry.notes === undefined) entry.notes = [];
-                let leftParen = i.value.indexOf("(");
-                let rightParen = i.value.indexOf(")", leftParen);
-                if (rightParen === -1) {
-                    // there must be some *emphasis* found
-                    s += i.value.slice(leftParen);
-                } else {
+                leftParen = i.value.indexOf("(");
+                while (leftParen != -1) {
+                    rightParen = i.value.indexOf(")", leftParen);
+                    if (rightParen === -1) {
+                        // there must be some *emphasis* found
+                        s += i.value.slice(leftParen);
+                        break;
+                    }
                     entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+                    leftParen = i.value.indexOf("(", rightParen);
                 }
-                // also TODO: if theres more than one disjoint set of parens
             }
         } else { // for now we assume that all previous ifs are mutually exclusive with this, may polish later
             if (i.type === "emphasis") {
                 // this is the emphasis, add it in boldface and move on
                 s += "*" + i.children[0].value + "*";
             } else if (i.type === "link") {
-                // something has gone terribly wrong.
+                // something has gone terribly wrong. this book must be viewed and edited manually.
                 entry.manualReviewRequired = true;
                 break;
             } else {
@@ -94,7 +100,18 @@ let parseListItem = function (listItem) {
                     // finally, we have reached the end of the note
                     entry.notes.push(stripParens(s + i.value.slice(0, rightParen + 1)));
                     s = "";
-                    // TODO: there can be a normal note following a bold-containing note
+                    // this is a copypaste of another block of code. probably not a good thing tbh.
+                    leftParen = i.value.indexOf("(");
+                    while (leftParen != -1) {
+                        rightParen = i.value.indexOf(")", leftParen);
+                        if (rightParen === -1) {
+                            // there must be some *emphasis* found
+                            s += i.value.slice(leftParen);
+                            break;
+                        }
+                        entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+                        leftParen = i.value.indexOf("(", rightParen);
+                    }
                 }
             }
         }
