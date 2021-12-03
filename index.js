@@ -31,7 +31,7 @@ const excludes = [
  *
  * @return {Object} Returns an Object containing details about the piece of media.
  */
-let parseListItem = function (listItem) {
+function parseListItem(listItem) {
     let stripParens = function (s) {
         if (s.slice(0,1) === "(" && s.slice(-1) === ")")
             return s.slice(1,-1);
@@ -150,7 +150,7 @@ function getMediaFromDirectory(dir) {
     return mediaType;
 }
 
-let parseMarkdown = function (doc) {
+function parseMarkdown(doc) {
     let tree = remark.parse(doc).children;
     let sections = []; // This will go into root object later
     let errors = [];
