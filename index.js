@@ -159,6 +159,11 @@ function getFilesFromDir(dir) {
         .map((file) => path.join(dir, file));
 }
 
+/**
+ * Retrieves the folder name from a string representing a directory and file
+ * @param {String} dir A string representing a directory in the format "./directory/file"
+ * @returns {String} The extracted directory name
+ */
 function getMediaFromDirectory(dir) {
     const slash = dir.lastIndexOf("/");
     let mediaType = dir.slice(2, slash);
