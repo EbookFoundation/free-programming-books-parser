@@ -19,15 +19,15 @@ const excludes = [
 ];
 
 /**
- * Summary - Parses a list item generated from remark-parse into a readable format.
+ * Parses a list item generated from remark-parse into a readable format.
  *
- * Desciption - remark-parse parses a markdown file into a long, intricate json.
- *              Many fields in this json either give information we do not care
- *              about or does not go into enough detail. This function parses the
- *              output of remark-parse into a format more preferred by this project,
- *              indicating authors, notes, and links etc.
+ * remark-parse parses a markdown file into a long, intricate json.
+ * Many fields in this json either give information we do not care
+ * about or does not go into enough detail. This function parses the
+ * output of remark-parse into a format preferred by this project,
+ * indicating authors, notes, and links etc.
  *
- * @param {Object}  listItem - a listItem in AST format defined by remark-parse
+ * @param {Object} listItem - a listItem in AST format defined by remark-parse
  *
  * @return {Object} Returns an Object containing details about the piece of media.
  */
@@ -268,7 +268,13 @@ function parseDirectory(directory) {
     return {dirJson: dirJson, dirErrors: dirErrors};
 }
 
-function parseAll(directories) {
+/**
+ * Reads all given directories for markdown files and prints the parsed json in the output directory
+ * 
+ * @param {Array}  directories A list of strings of directories to scan for markdown files
+ * @param {String} output A string for the path that the output should be placed in
+ */
+function parseAll(directories, output) {
     let rootChildren = []; // this will hold the output of each directory
     let rootErrors = [];
 
@@ -304,4 +310,4 @@ function parseAll(directories) {
 }
 
 let { input, output } = commandLineArgs(optionDefinitions);
-parseAll(input);
+parseAll(input, output);
