@@ -63,14 +63,15 @@ let parseListItem = function (listItem) {
                 entry.otherLinks.push({title: stripParens(i.children[0].value), url: i.url});
                 // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
             }
-            if (i.type === "text" && i.value.indexOf("(") !== -1 && i.value.indexOf(")") !== -1) {
+            if (i.type === "text" && i.value.indexOf("(") !== -1) {
                 // notes found (currently assumes no nested parentheses)
                 if (entry.notes === undefined) entry.notes = [];
                 let leftParen = i.value.indexOf("(");
                 let rightParen = i.value.indexOf(")", leftParen);
                 if (rightParen === -1) {
                     // there must be some *emphasis* found
-                    s += i.value.slice(leftParen + 1);
+                    if (entry.title === "Exploring CQRS and Event Sourcing") console.log("poop")
+                    s += i.value.slice(leftParen);
                 } else {
                     entry.notes.push(i.value.slice(leftParen + 1, rightParen));
                 }
@@ -80,6 +81,10 @@ let parseListItem = function (listItem) {
             if (i.type === "emphasis") {
                 // this is the emphasis, add it in boldface and move on
                 s += "*" + i.children[0].value + "*";
+            } else if (i.type === "link") {
+                // something has gone terribly wrong.
+                entry.manualReviewRequired = true;
+                break;
             } else {
                 // hopefully this is the end of the note
                 let rightParen = i.value.indexOf(")");
@@ -88,7 +93,7 @@ let parseListItem = function (listItem) {
                     s += i.value;
                 } else {
                     // finally, we have reached the end of the note
-                    entry.notes.push(s + i.value.slice(0, rightParen));
+                    entry.notes.push(stripParens(s + i.value.slice(0, rightParen + 1)));
                     s = "";
                     // TODO: there can be a normal note following a bold-containing note
                 }
