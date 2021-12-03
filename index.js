@@ -130,7 +130,12 @@ function parseListItem(listItem) {
     return entry;
 }
 
-// from free-programming-books-lint
+/**
+ * Determines the language a certain file is based on the format
+ * from the FreeEbookFoundation GitHub page
+ * @param {String} filename A filename in the format kept by all markdown files on the FreeProgrammingBooks Github
+ * @returns {String} The language the file is
+ */
 function getLangFromFilename(filename) {
     const dash = filename.lastIndexOf("-");
     const dot = filename.lastIndexOf(".");
