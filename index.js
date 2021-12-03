@@ -177,8 +177,8 @@ function getMediaFromDirectory(dir) {
 
 /**
  * Turns a single markdown file into the json structure needed
- * @param {path} doc - a single file path to a markdown file 
- * @returns {object} Json object of entries in the md file 
+ * @param {path} doc - a single file path to a markdown file
+ * @returns {object} Json object of entries in the md file
  */
 function parseMarkdown(doc) {
     let tree = remark.parse(doc).children;
