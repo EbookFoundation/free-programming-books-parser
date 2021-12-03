@@ -303,8 +303,5 @@ function parseAll(directories) {
     });
 }
 
-console.time("Parse Time");
 let { input, output } = commandLineArgs(optionDefinitions);
-
 parseAll(input);
-console.timeEnd("Parse Time");
