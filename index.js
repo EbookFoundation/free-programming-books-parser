@@ -33,38 +33,44 @@ const excludes = [
  */
 function parseListItem(listItem) {
     let stripParens = function (s) {
-        if (s.slice(0,1) === "(" && s.slice(-1) === ")")
-            return s.slice(1,-1);
+        if (s.slice(0, 1) === "(" && s.slice(-1) === ")") return s.slice(1, -1);
         return s;
-    }
+    };
     let entry = {};
-    let s = "";                     // If we need to build up a string over multiple listItem elements
-    let leftParen, rightParen = -1; // If we need to parse parenthesized text
+    let s = ""; // If we need to build up a string over multiple listItem elements
+    let leftParen,
+        rightParen = -1; // If we need to parse parenthesized text
     const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
     entry.url = link.url;
     entry.title = link.children[0].value;
     // remember to get OTHER STUFF!! remember there may be multiple links!
     for (let i of otherStuff) {
-        if (s === "") { // this is almost always, except for when we are parsing a multi-element note
-            if (i.type === "text" && i.value.slice(0,3) === " - ") {
+        if (s === "") {
+            // this is almost always, except for when we are parsing a multi-element note
+            if (i.type === "text" && i.value.slice(0, 3) === " - ") {
                 // author found
                 let parenIndex = i.value.indexOf("(");
                 if (parenIndex === -1) {
                     entry.author = i.value.slice(3).trim();
-                }
-                else {
+                } else {
                     entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
                 }
             }
-            if (i.type === "emphasis" &&
-                    i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
+            if (
+                i.type === "emphasis" &&
+                i.children[0].value.slice(0, 1) === "(" &&
+                i.children[0].value.slice(-1) === ")"
+            ) {
                 // access notes found (currently assumes exactly one child, so far this is always the case)
                 entry.accessNotes = i.children[0].value.slice(1, -1);
             }
             if (i.type === "link") {
                 // other links found
                 if (entry.otherLinks === undefined) entry.otherLinks = [];
-                entry.otherLinks.push({title: stripParens(i.children[0].value), url: i.url});
+                entry.otherLinks.push({
+                    title: stripParens(i.children[0].value),
+                    url: i.url,
+                });
                 // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
             }
             if (i.type === "text" && i.value.indexOf("(") !== -1) {
@@ -82,7 +88,8 @@ function parseListItem(listItem) {
                     leftParen = i.value.indexOf("(", rightParen);
                 }
             }
-        } else { // for now we assume that all previous ifs are mutually exclusive with this, may polish later
+        } else {
+            // for now we assume that all previous ifs are mutually exclusive with this, may polish later
             if (i.type === "emphasis") {
                 // this is the emphasis, add it in boldface and move on
                 s += "*" + i.children[0].value + "*";
@@ -98,7 +105,9 @@ function parseListItem(listItem) {
                     s += i.value;
                 } else {
                     // finally, we have reached the end of the note
-                    entry.notes.push(stripParens(s + i.value.slice(0, rightParen + 1)));
+                    entry.notes.push(
+                        stripParens(s + i.value.slice(0, rightParen + 1))
+                    );
                     s = "";
                     // this is a copypaste of another block of code. probably not a good thing tbh.
                     leftParen = i.value.indexOf("(");
@@ -109,7 +118,9 @@ function parseListItem(listItem) {
                             s += i.value.slice(leftParen);
                             break;
                         }
-                        entry.notes.push(i.value.slice(leftParen + 1, rightParen));
+                        entry.notes.push(
+                            i.value.slice(leftParen + 1, rightParen)
+                        );
                         leftParen = i.value.indexOf("(", rightParen);
                     }
                 }
@@ -117,7 +128,7 @@ function parseListItem(listItem) {
         }
     }
     return entry;
-};
+}
 
 // from free-programming-books-lint
 function getLangFromFilename(filename) {
@@ -133,7 +144,11 @@ function getLangFromFilename(filename) {
     return lang;
 }
 
-// from free-programming-books-lint
+/**
+ * Gets all markdown files in a directory,
+ * @param {String} dir - A directory path
+ * @returns A list of all md files in a directory, excluding those in the excludes array
+ */
 function getFilesFromDir(dir) {
     return fs
         .readdirSync(dir)
@@ -215,20 +230,20 @@ function parseMarkdown(doc) {
         } catch (e) {
             // if there was an error while parsing, print the error to an error log
             // looks really ugly, maybe try to refine output later
-            let errStart = JSON.stringify(item.position.start.line)
-            let errEnd = JSON.stringify(item.position.end.line)
-            str = `Error at line ${errStart} - line ${errEnd}.`
+            let errStart = JSON.stringify(item.position.start.line);
+            let errEnd = JSON.stringify(item.position.end.line);
+            str = `Error at line ${errStart} - line ${errEnd}.`;
             errors.push(str);
         }
     });
-    return {sections: sections, errors: errors};
-};
+    return { sections: sections, errors: errors };
+}
 
 /**
  * Parses a single directory's md files and converts them into usable json
- * @param {String} directory A string pointing to a directory 
- * @returns {Object} An object containing two values, dirJson and dirErrors. 
- *                   dirJson contains all data that was successfully parsed from 
+ * @param {String} directory A string pointing to a directory
+ * @returns {Object} An object containing two values, dirJson and dirErrors.
+ *                   dirJson contains all data that was successfully parsed from
  *                   the markdown files. dirErrors contains all entries that had
  *                   an error occur while parsing.
  */
@@ -258,8 +273,8 @@ function parseDirectory(directory) {
         if (errors.length !== 0) {
             let docErrors = {
                 file: path.basename(filename),
-                errors: errors
-            }
+                errors: errors,
+            };
             dirErrors.push(docErrors);
         }
     });
@@ -273,12 +288,12 @@ function parseDirectory(directory) {
 
     // Errors
 
-    return {dirJson: dirJson, dirErrors: dirErrors};
+    return { dirJson: dirJson, dirErrors: dirErrors };
 }
 
 /**
  * Reads all given directories for markdown files and prints the parsed json in the output directory
- * 
+ *
  * @param {Array}  directories A list of strings of directories to scan for markdown files
  * @param {String} output A string for the path that the output should be placed in
  */
@@ -290,7 +305,10 @@ function parseAll(directories, output) {
         let { dirJson, dirErrors } = parseDirectory(directory);
         rootChildren.push(dirJson);
         if (dirErrors.length !== 0) {
-            rootErrors.push({directory: path.basename(directory), files: dirErrors});
+            rootErrors.push({
+                directory: path.basename(directory),
+                files: dirErrors,
+            });
         }
     });
 
@@ -303,18 +321,22 @@ function parseAll(directories, output) {
     // Errors
     let allErrors = {
         type: "root",
-        directories: rootErrors
+        directories: rootErrors,
     };
     fs.writeFileSync(output, JSON.stringify(rootJson, null, 3), function (err) {
         if (err) {
             console.log(err);
         }
     });
-    fs.writeFileSync('./parser/fpb.log', JSON.stringify(allErrors, null, 3), function(err) {
-        if(err){
-            console.log(err);
+    fs.writeFileSync(
+        "./parser/fpb.log",
+        JSON.stringify(allErrors, null, 3),
+        function (err) {
+            if (err) {
+                console.log(err);
+            }
         }
-    });
+    );
 }
 
 let { input, output } = commandLineArgs(optionDefinitions);
