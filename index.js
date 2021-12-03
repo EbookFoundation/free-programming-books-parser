@@ -224,6 +224,14 @@ let parseMarkdown = function (doc) {
     return {sections: sections, errors: errors};
 };
 
+/**
+ * Parses a single directory's md files and converts them into usable json
+ * @param {String} directory A string pointing to a directory 
+ * @returns {Object} An object containing two values, dirJson and dirErrors. 
+ *                   dirJson contains all data that was successfully parsed from 
+ *                   the markdown files. dirErrors contains all entries that had
+ *                   an error occur while parsing.
+ */
 function parseDirectory(directory) {
     let dirChildren = []; // this will hold the output each markdown doc
     let dirErrors = []; //contains error for a given directory
