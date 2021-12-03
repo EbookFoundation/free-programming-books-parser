@@ -70,7 +70,6 @@ let parseListItem = function (listItem) {
                 let rightParen = i.value.indexOf(")", leftParen);
                 if (rightParen === -1) {
                     // there must be some *emphasis* found
-                    if (entry.title === "Exploring CQRS and Event Sourcing") console.log("poop")
                     s += i.value.slice(leftParen);
                 } else {
                     entry.notes.push(i.value.slice(leftParen + 1, rightParen));
