@@ -7,7 +7,7 @@ const languages = require("./languages");
 const commandLineArgs = require("command-line-args");
 
 const optionDefinitions = [
-  { name: "input", multiple: true, defaultValue: ["./fpb/books"] },
+  { name: "input", multiple: true, defaultValue: ["./fpb/books", "./fpb/casts", "./fpb/courses", "./fpb/more"] },
   { name: "output", defaultValue: "./parser/fpb.json" },
 ];
 
