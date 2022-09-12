@@ -7,11 +7,20 @@ const languages = require("./languages");
 const commandLineArgs = require("command-line-args");
 
 const optionDefinitions = [
-  { name: "input", multiple: true, defaultValue: ["./fpb/books", "./fpb/casts", "./fpb/courses", "./fpb/more"] },
+  {
+    name: "input",
+    multiple: true,
+    defaultValue: ["./fpb/books", "./fpb/casts", "./fpb/courses", "./fpb/more"],
+  },
   { name: "output", defaultValue: "./parser/fpb.json" },
 ];
 
-const excludes = ["README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SUMMARY.md"];
+const excludes = [
+  "README.md",
+  "CONTRIBUTING.md",
+  "CODE_OF_CONDUCT.md",
+  "SUMMARY.md",
+];
 
 /**
  * Parses a list item generated from remark-parse into a readable format.
@@ -51,7 +60,11 @@ function parseListItem(listItem) {
           entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
         }
       }
-      if (i.type === "emphasis" && i.children[0].value.slice(0, 1) === "(" && i.children[0].value.slice(-1) === ")") {
+      if (
+        i.type === "emphasis" &&
+        i.children[0].value.slice(0, 1) === "(" &&
+        i.children[0].value.slice(-1) === ")"
+      ) {
         // access notes found (currently assumes exactly one child, so far this is always the case)
         entry.accessNotes = i.children[0].value.slice(1, -1);
       }
@@ -149,7 +162,9 @@ function getLangFromFilename(filename) {
 function getFilesFromDir(dir) {
   return fs
     .readdirSync(dir)
-    .filter((file) => path.extname(file) === ".md" && excludes.indexOf(file) === -1)
+    .filter(
+      (file) => path.extname(file) === ".md" && excludes.indexOf(file) === -1
+    )
     .map((file) => path.join(dir, file));
 }
 
@@ -221,7 +236,9 @@ function parseMarkdown(doc) {
             let lastSection = sections.length - 1;
             let lastSubSec = sections[lastSection].subsections.length - 1;
             let contentJson = parseListItem(content);
-            sections[lastSection].subsections[lastSubSec].entries.push(contentJson); // add entry to most recent h4
+            sections[lastSection].subsections[lastSubSec].entries.push(
+              contentJson
+            ); // add entry to most recent h4
           }
         });
       }
