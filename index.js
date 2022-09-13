@@ -214,30 +214,30 @@ function parseMarkdown(doc) {
   tree.slice(i).forEach((item) => {
     // Start iterating after Index
     try {
-      if (
-        item.type == "heading" &&
-        getSectionNameFromHeadingContent(item.children) == "Index"
-      )
-        return;
-
       if (item.type == "heading") {
+        const sectionName = getSectionNameFromHeadingContent(item.children);
+        if (sectionName == "Index") return;
         if (item.depth == 3) {
           // Heading is an h3
           currentDepth = 3;
+          // create section record
           let newSection = {
-            section: getSectionNameFromHeadingContent(item.children),
+            section: sectionName,
             entries: [],
             subsections: [],
           };
-          sections.push(newSection); // Push the section to the output array
+          // Push the section to the output array
+          sections.push(newSection);
         } else if (item.depth == 4) {
           // Heading is an h4
           currentDepth = 4;
+          // create subsection record
           let newSubsection = {
-            section: getSectionNameFromHeadingContent(item.children),
+            section: sectionName,
             entries: [],
           };
-          sections[sections.length - 1].subsections.push(newSubsection); // Add to subsection array of most recent h3
+          // Add to subsection array of most recent h3
+          sections[sections.length - 1].subsections.push(newSubsection);
         }
       } else if (item.type == "list") {
         item.children.forEach((listItem) => {
