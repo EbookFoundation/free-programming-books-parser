@@ -31,7 +31,40 @@ const excludes = [
  * @returns {string} an string with the name of the section related with the input heading
  */
 function getSectionNameFromHeadingContent(children) {
-  return children[0].value; // Get the name of the subsection
+  const walk = (children, depth) =>
+    children.reduce((text, node, index) => {
+      if (!node || !node.type) return text;
+      switch (node.type) {
+        //
+        // meaningfull nodes
+        //
+        case "emphasis":
+          text += "_" + walk(node.children, depth + 1) + "_";
+          break;
+        case "inlineCode":
+          text += "`" + node.value + "`";
+          break;
+        case "strong":
+          text += "**" + walk(node.children, depth + 1) + "**";
+          break;
+        case "text":
+          text += node.value;
+          break;
+        //
+        // skipped nodes
+        //
+        case "heading":
+        case "html":
+        case "link":
+        case "list":
+        case "paragraph":
+        default:
+          break;
+      }
+      return text;
+    }, "");
+
+  return walk(children, 0);
 }
 
 /**
