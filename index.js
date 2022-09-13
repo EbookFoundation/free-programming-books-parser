@@ -23,6 +23,51 @@ const excludes = [
 ];
 
 /**
+ * Parses the contents of a heading from remark-parse into a readable format.
+ *
+ * @param {Array<Object>} children - an array of AST items defined by remark-parse for
+ *        the content of headings (H1..H7)
+ *
+ * @returns {string} an string with the name of the section related with the input heading
+ */
+function getSectionNameFromHeadingContent(children) {
+  const walk = (children, depth) =>
+    children.reduce((text, node, index) => {
+      if (!node || !node.type) return text;
+      switch (node.type) {
+        //
+        // meaningfull nodes
+        //
+        case "emphasis":
+          text += "_" + walk(node.children, depth + 1) + "_";
+          break;
+        case "inlineCode":
+          text += "`" + node.value + "`";
+          break;
+        case "strong":
+          text += "**" + walk(node.children, depth + 1) + "**";
+          break;
+        case "text":
+          text += node.value;
+          break;
+        //
+        // skipped nodes
+        //
+        case "heading":
+        case "html":
+        case "link":
+        case "list":
+        case "paragraph":
+        default:
+          break;
+      }
+      return text;
+    }, "");
+
+  return walk(children, 0);
+}
+
+/**
  * Parses a list item generated from remark-parse into a readable format.
  *
  * remark-parse parses a markdown file into a long, intricate json.
@@ -202,26 +247,30 @@ function parseMarkdown(doc) {
   tree.slice(i).forEach((item) => {
     // Start iterating after Index
     try {
-      if (item.type == "heading" && item.children[0].value == "Index") return;
-
       if (item.type == "heading") {
+        const sectionName = getSectionNameFromHeadingContent(item.children);
+        if (sectionName == "Index") return;
         if (item.depth == 3) {
           // Heading is an h3
           currentDepth = 3;
+          // create section record
           let newSection = {
-            section: item.children[0].value, // Get the name of the section
+            section: sectionName,
             entries: [],
             subsections: [],
           };
-          sections.push(newSection); // Push the section to the output array
+          // Push the section to the output array
+          sections.push(newSection);
         } else if (item.depth == 4) {
           // Heading is an h4
           currentDepth = 4;
+          // create subsection record
           let newSubsection = {
-            section: item.children[0].value, // Get the name of the subsection
+            section: sectionName,
             entries: [],
           };
-          sections[sections.length - 1].subsections.push(newSubsection); // Add to subsection array of most recent h3
+          // Add to subsection array of most recent h3
+          sections[sections.length - 1].subsections.push(newSubsection);
         }
       } else if (item.type == "list") {
         item.children.forEach((listItem) => {
