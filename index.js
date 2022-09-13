@@ -23,6 +23,18 @@ const excludes = [
 ];
 
 /**
+ * Parses the contents of a heading from remark-parse into a readable format.
+ *
+ * @param {Array<Object>} children - an array of AST items defined by remark-parse for
+ *        the content of headings (H1..H7)
+ *
+ * @returns {string} an string with the name of the section related with the input heading
+ */
+function getSectionNameFromHeadingContent(children) {
+  return children[0].value; // Get the name of the subsection
+}
+
+/**
  * Parses a list item generated from remark-parse into a readable format.
  *
  * remark-parse parses a markdown file into a long, intricate json.
@@ -202,14 +214,18 @@ function parseMarkdown(doc) {
   tree.slice(i).forEach((item) => {
     // Start iterating after Index
     try {
-      if (item.type == "heading" && item.children[0].value == "Index") return;
+      if (
+        item.type == "heading" &&
+        getSectionNameFromHeadingContent(item.children) == "Index"
+      )
+        return;
 
       if (item.type == "heading") {
         if (item.depth == 3) {
           // Heading is an h3
           currentDepth = 3;
           let newSection = {
-            section: item.children[0].value, // Get the name of the section
+            section: getSectionNameFromHeadingContent(item.children),
             entries: [],
             subsections: [],
           };
@@ -218,7 +234,7 @@ function parseMarkdown(doc) {
           // Heading is an h4
           currentDepth = 4;
           let newSubsection = {
-            section: item.children[0].value, // Get the name of the subsection
+            section: getSectionNameFromHeadingContent(item.children),
             entries: [],
           };
           sections[sections.length - 1].subsections.push(newSubsection); // Add to subsection array of most recent h3
