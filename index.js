@@ -174,9 +174,17 @@ function getFilesFromDir(dir) {
  * @returns {String} The extracted directory name
  */
 function getMediaTypeFromDirectoryPath(str) {
-  const slash = str.lastIndexOf("/");
-  let mediaType = str.slice(2, slash);
-  return mediaType;
+  str = path.resolve(str); // sanatize and expand (OS independent)
+  let type;
+  if (fs.lstatSync(str).isDirectory()) {
+    // if path is itself a directory, use it name as result
+    type = path.basename(str);
+  } else {
+    // if not... parent/previous slug is always a directory; extract this part
+    // path.sep: Windows -> "\", Unix -> "/"
+    type = str.split(path.sep).slice(-2, -1).join(path.sep);
+  }
+  return type;
 }
 
 /**
