@@ -5,7 +5,7 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ Senior-Design-2021-Ebook-Team/markdown-parser.git"
+    "url": "git+https://github.com/EbookFoundation/free-programming-books-parser.git"
   },
   "scripts": {
     "start": "node index.js",
