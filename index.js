@@ -215,13 +215,21 @@ function getFilesFromDir(dir) {
 
 /**
  * Retrieves the folder name from a string representing a directory and file
- * @param {String} dir A string representing a directory in the format "./directory/file"
+ * @param {String} str - A string representing a path directory alike in the format "./directory/file"
  * @returns {String} The extracted directory name
  */
-function getMediaFromDirectory(dir) {
-  const slash = dir.lastIndexOf("/");
-  let mediaType = dir.slice(2, slash);
-  return mediaType;
+function getMediaTypeFromDirectoryPath(str) {
+  str = path.resolve(str); // sanatize and expand (OS independent)
+  let type;
+  if (fs.lstatSync(str).isDirectory()) {
+    // if path is itself a directory, use it name as result
+    type = path.basename(str);
+  } else {
+    // if not... parent/previous slug is always a directory; extract this part
+    // path.sep: Windows -> "\", Unix -> "/"
+    type = str.split(path.sep).slice(-2, -1).join(path.sep);
+  }
+  return type;
 }
 
 /**
@@ -315,7 +323,7 @@ function parseDirectory(directory) {
   let dirChildren = []; // this will hold the output each markdown doc
   let dirErrors = []; //contains error for a given directory
 
-  let mediaType = getMediaFromDirectory(directory);
+  let mediaType = getMediaTypeFromDirectoryPath(directory);
   const filenames = getFilesFromDir(path.resolve(directory));
   filenames.forEach((filename) => {
     const doc = fs.readFileSync(filename);
