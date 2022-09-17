@@ -23,6 +23,18 @@ const excludes = [
 ];
 
 /**
+ * Wraps a string between other that acts as token.
+ * @param {string} text - the text to wrap
+ * @param {string} token - the text to wrap with between
+ * @returns a string in the form `${token}${text}${token}`
+ */
+function wrapText(text, token = "") {
+  // avoid mix concatenate/sum string/numbers using array join hack
+  //return `${token}${text}${token}`;
+  return [token, token].join(String(text));
+}
+
+/**
  * Parses the contents of a heading from remark-parse into a readable format.
  *
  * @param {Array<Object>} children - an array of AST items defined by remark-parse for
@@ -40,13 +52,13 @@ function getSectionNameFromHeadingContent(children) {
         // meaningfull nodes
         //
         case "emphasis":
-          text += "_" + walk(node.children, depth + 1) + "_";
+          text += wrapText(walk(node.children, depth + 1), "_");
           break;
         case "inlineCode":
-          text += "`" + node.value + "`";
+          text += wrapText(node.value, "`");
           break;
         case "strong":
-          text += "**" + walk(node.children, depth + 1) + "**";
+          text += wrapText(walk(node.children, depth + 1), "**");
           break;
         case "text":
           text += node.value;
