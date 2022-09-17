@@ -81,6 +81,18 @@ function getSectionNameFromHeadingContent(children) {
 }
 
 /**
+ * Parses the contents of a heading from remark-parse into a readable format.
+ *
+ * @param {Array<Object>} children - an array of AST items defined by remark-parse for
+ *        the content of headings (H1..H7)
+ *
+ * @returns {string} an string with the name of the section related with the input heading
+ */
+function getLinkTextFromLinkNodes(children) {
+  return children[0].value;
+}
+
+/**
  * Parses a list item generated from remark-parse into a readable format.
  *
  * remark-parse parses a markdown file into a long, intricate json.
@@ -103,8 +115,8 @@ function parseListItem(listItem) {
   let leftParen,
     rightParen = -1; // If we need to parse parenthesized text
   const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
+  entry.title = getLinkTextFromLinkNodes(link.children);
   entry.url = link.url;
-  entry.title = link.children[0].value;
   // remember to get OTHER STUFF!! remember there may be multiple links!
   for (let i of otherStuff) {
     if (s === "") {
@@ -130,7 +142,7 @@ function parseListItem(listItem) {
         // other links found
         if (entry.otherLinks === undefined) entry.otherLinks = [];
         entry.otherLinks.push({
-          title: stripParens(i.children[0].value),
+          title: stripParens(getLinkTextFromLinkNodes(i.children)),
           url: i.url,
         });
         // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
