@@ -23,6 +23,16 @@ const excludes = [
 ];
 
 /**
+ * Strip wrapped parenthesis from a string.
+ * @param {string} s - the string to process
+ * @returns {string} the stripped string if parens found, the input string if don't
+ */
+function stripParens(s) {
+  if (s.slice(0, 1) === "(" && s.slice(-1) === ")") return s.slice(1, -1);
+  return s;
+}
+
+/**
  * Wraps a string between other that acts as token.
  * @param {string} text - the text to wrap
  * @param {string} token - the text to wrap with between
@@ -106,10 +116,6 @@ function getLinkTextFromLinkNodes(children) {
  * @return {Object} Returns an Object containing details about the piece of media.
  */
 function parseListItem(listItem) {
-  let stripParens = function (s) {
-    if (s.slice(0, 1) === "(" && s.slice(-1) === ")") return s.slice(1, -1);
-    return s;
-  };
   let entry = {};
   let s = ""; // If we need to build up a string over multiple listItem elements
   let leftParen,
