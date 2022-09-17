@@ -31,9 +31,10 @@ const excludes = [
  * @returns {string} an string with the name of the section related with the input heading
  */
 function getSectionNameFromHeadingContent(children) {
+  // visit nodes in depth
   const walk = (children, depth) =>
     children.reduce((text, node, index) => {
-      if (!node || !node.type) return text;
+      if (!node || !node.type) return text; // not AST, maybe plain text
       switch (node.type) {
         //
         // meaningfull nodes
