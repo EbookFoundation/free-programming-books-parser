@@ -184,9 +184,9 @@ function parseListItem(listItem) {
     rightParen = -1; // If we need to parse parenthesized text
   // head of listItem = url, the rest is "other stuff"
   const [link, ...otherStuff] = listItem;
+  entry.url = link.url;
   // link.children || link.value => weak way to check if link.type === "link"
   entry.title = getLinkTextFromLinkNodes(link.children || link.value);
-  entry.url = link.url;
   // remember to get OTHER STUFF!! remember there may be multiple links!
   for (let i of otherStuff) {
     if (s === "") {
