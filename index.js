@@ -33,6 +33,21 @@ function stripParens(s) {
 }
 
 /**
+ * To String
+ * @param {any} o - the object to get it text representation
+ * @returns the `o` as string
+ */
+function toString(o) {
+  // null or undefined
+  if (o === null || o === void 0) return o;
+  if (typeof o === "string") return o;
+  // has a toString function in their prototype
+  if (typeof o.toString === "function") return o.toString();
+  // as string in the latest intent
+  return String(o);
+}
+
+/**
  * Wraps a string between other that acts as token.
  * @param {string} text - the text to wrap
  * @param {string} token - the text to wrap with between
@@ -99,7 +114,54 @@ function getSectionNameFromHeadingContent(children) {
  * @returns {string} an string with the name of the section related with the input heading
  */
 function getLinkTextFromLinkNodes(children) {
-  return children[0].value;
+  // visit nodes in depth
+  const walk = (children, depth) => {
+    // not AST, maybe plain text
+    if (!Array.isArray(children)) return toString(children);
+    // AST children array nodes
+    return children.reduce((text, node, index) => {
+      if (!node || !node.type) return text; // not AST, maybe plain text
+      switch (node.type) {
+        //
+        // rebuild meaningfull nodes
+        //
+        case "emphasis":
+          // {type: 'emphasis', children: [...], position: {...}}
+          text += wrapText(walk(node.children, depth + 1), "_");
+          break;
+        case "image":
+          // {type: 'image', title: '...', url: '...', alt: '...', position: {...}}
+          text += `![${node.alt || node.title}](${node.url})`;
+          break;
+        case "inlineCode":
+          // {type: 'inlineCode', value: '...', position: {...}}
+          text += wrapText(node.value, "`");
+          break;
+        case "strong":
+          // {type: 'strong', children: [...], position: {...}}
+          text += wrapText(walk(node.children, depth + 1), "**");
+          break;
+        case "text":
+          // {type: 'text', value: '...', position: {...}}
+          text += node.value;
+          break;
+        //
+        // skipped nodes
+        //
+        default:
+          console.log(
+            "getLinkTextFromLinkNodes::skipped",
+            depth,
+            node.type,
+            node
+          );
+          break;
+      }
+      return text;
+    }, "");
+  };
+
+  return walk(children, 0);
 }
 
 /**
@@ -120,8 +182,10 @@ function parseListItem(listItem) {
   let s = ""; // If we need to build up a string over multiple listItem elements
   let leftParen,
     rightParen = -1; // If we need to parse parenthesized text
-  const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
-  entry.title = getLinkTextFromLinkNodes(link.children);
+  // head of listItem = url, the rest is "other stuff"
+  const [link, ...otherStuff] = listItem;
+  // link.children || link.value => weak way to check if link.type === "link"
+  entry.title = getLinkTextFromLinkNodes(link.children || link.value);
   entry.url = link.url;
   // remember to get OTHER STUFF!! remember there may be multiple links!
   for (let i of otherStuff) {
