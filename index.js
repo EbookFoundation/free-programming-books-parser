@@ -70,12 +70,12 @@ function getSectionNameFromHeadingContent(children) {
 }
 
 /**
- * Parses the contents of a heading from remark-parse into a readable format.
+ * Parses the contents of a link from remark-parse into a readable format.
  *
  * @param {Array<Object>} children - an array of AST items defined by remark-parse for
- *        the content of headings (H1..H7)
+ *        the content of a link (A)
  *
- * @returns {string} an string with the name of the section related with the input heading
+ * @returns {string} an string with the text of the related input link
  */
 function getLinkTextFromLinkNodes(children) {
   // visit nodes in depth
