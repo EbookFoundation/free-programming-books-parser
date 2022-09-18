@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const remark = require("remark");
+const { Strings } = require("./lib/functions");
 const languages = require("./languages");
 const commandLineArgs = require("command-line-args");
 
@@ -23,43 +24,6 @@ const excludes = [
 ];
 
 /**
- * Strip wrapped parenthesis from a string.
- * @param {string} s - the string to process
- * @returns {string} the stripped string if parens found, the input string if don't
- */
-function stripParens(s) {
-  if (s.slice(0, 1) === "(" && s.slice(-1) === ")") return s.slice(1, -1);
-  return s;
-}
-
-/**
- * To String
- * @param {any} o - the object to get it text representation
- * @returns the `o` as string
- */
-function toString(o) {
-  // null or undefined
-  if (o === null || o === void 0) return o;
-  if (typeof o === "string") return o;
-  // has a toString function in their prototype
-  if (typeof o.toString === "function") return o.toString();
-  // as string in the latest intent
-  return String(o);
-}
-
-/**
- * Wraps a string between other that acts as token.
- * @param {string} text - the text to wrap
- * @param {string} token - the text to wrap with between
- * @returns a string in the form `${token}${text}${token}`
- */
-function wrapText(text, token = "") {
-  // avoid mix concatenate/sum string/numbers using array join hack
-  //return `${token}${text}${token}`;
-  return [token, token].join(String(text));
-}
-
-/**
  * Parses the contents of a heading from remark-parse into a readable format.
  *
  * @param {Array<Object>} children - an array of AST items defined by remark-parse for
@@ -77,16 +41,16 @@ function getSectionNameFromHeadingContent(children) {
         // meaningfull nodes
         //
         case "emphasis":
-          text += wrapText(walk(node.children, depth + 1), "_");
+        case "strong":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: walk(node.children, depth + 1),
+          });
           break;
         case "inlineCode":
-          text += wrapText(node.value, "`");
-          break;
-        case "strong":
-          text += wrapText(walk(node.children, depth + 1), "**");
-          break;
         case "text":
-          text += node.value;
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.value,
+          });
           break;
         //
         // skipped nodes
@@ -117,7 +81,7 @@ function getLinkTextFromLinkNodes(children) {
   // visit nodes in depth
   const walk = (children, depth) => {
     // not AST, maybe plain text
-    if (!Array.isArray(children)) return toString(children);
+    if (!Array.isArray(children)) return Strings.toString(children);
     // AST children array nodes
     return children.reduce((text, node, index) => {
       if (!node || !node.type) return text; // not AST, maybe plain text
@@ -125,25 +89,23 @@ function getLinkTextFromLinkNodes(children) {
         //
         // rebuild meaningfull nodes
         //
-        case "emphasis":
-          // {type: 'emphasis', children: [...], position: {...}}
-          text += wrapText(walk(node.children, depth + 1), "_");
-          break;
         case "image":
-          // {type: 'image', title: '...', url: '...', alt: '...', position: {...}}
-          text += `![${node.alt || node.title}](${node.url})`;
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.alt || node.title,
+            url: node.url,
+          });
           break;
         case "inlineCode":
-          // {type: 'inlineCode', value: '...', position: {...}}
-          text += wrapText(node.value, "`");
-          break;
-        case "strong":
-          // {type: 'strong', children: [...], position: {...}}
-          text += wrapText(walk(node.children, depth + 1), "**");
-          break;
         case "text":
-          // {type: 'text', value: '...', position: {...}}
-          text += node.value;
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.value,
+          });
+          break;
+        case "emphasis":
+        case "strong":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: walk(node.children, depth + 1),
+          });
           break;
         //
         // skipped nodes
@@ -162,6 +124,40 @@ function getLinkTextFromLinkNodes(children) {
   };
 
   return walk(children, 0);
+}
+
+/**
+ * Gets the template related with AST remark-parse node.
+ * @param {Object} node - AST node defined by remark-parse
+ * @returns {string} - the template string
+ */
+function remarkTokenAST(node) {
+  if (node && node.type) {
+    switch (node.type) {
+      case "emphasis": // {type: 'emphasis', children: [...], position: {...}}
+        return Strings.wrap("{{text}}", "_");
+      case "heading": // {type: 'heading', depth: 1, children: [...], position: {...}}
+        return ["#".repeat(item.depth || 0), "{{text}}"].join("");
+      case "image": // {type: 'image', title: '...', url: '...', alt: '...', position: {...}}
+        return "![{{text}}]({{url}})";
+      case "inlineCode": // {type: 'inlineCode', value: '...', position: {...}}
+        return Strings.wrap("{{text}}", "`");
+      case "link": // {type: 'link', title: '...', url: '...', children: [...], position: {...}}
+        return "[{{text}}]({{url}})";
+      case "list": // {type: 'list', ordered: false, start: null, spread: false, children: [...], position: {...}}
+      case "listItem": // {type: 'listItem', spread: false, checked: null, children: [...], position: {...}}
+        // TODO: generate token for list/listItem
+        break;
+      case "strong": // {type: 'strong', children: [...], position: {...}}
+        return Strings.wrap("{{text}}", "**");
+      case "html": // {type: 'html', value: '...', position: {...}}
+      case "text": // {type: 'text', value: '...', position: {...}}
+        return Strings.wrap("{{text}}"); // identity
+      default:
+        break;
+    }
+  }
+  throw new Error("Unrecognized remark node type: " + (node && node.type));
 }
 
 /**
@@ -212,7 +208,7 @@ function parseListItem(listItem) {
         // other links found
         if (entry.otherLinks === undefined) entry.otherLinks = [];
         entry.otherLinks.push({
-          title: stripParens(getLinkTextFromLinkNodes(i.children)),
+          title: Strings.stripParens(getLinkTextFromLinkNodes(i.children)),
           url: i.url,
         });
         // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
@@ -249,7 +245,9 @@ function parseListItem(listItem) {
           s += i.value;
         } else {
           // finally, we have reached the end of the note
-          entry.notes.push(stripParens(s + i.value.slice(0, rightParen + 1)));
+          entry.notes.push(
+            Strings.stripParens(s + i.value.slice(0, rightParen + 1))
+          );
           s = "";
           // this is a copypaste of another block of code. probably not a good thing tbh.
           leftParen = i.value.indexOf("(");
