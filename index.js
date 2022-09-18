@@ -134,6 +134,8 @@ function getLinkTextFromLinkNodes(children) {
 function remarkTokenAST(node) {
   if (node && node.type) {
     switch (node.type) {
+      case "break": // {type: 'break', position: {...}}
+        return "<br/>";
       case "emphasis": // {type: 'emphasis', children: [...], position: {...}}
         return Strings.wrap("{{text}}", "_");
       case "heading": // {type: 'heading', depth: 1, children: [...], position: {...}}
@@ -151,6 +153,7 @@ function remarkTokenAST(node) {
       case "strong": // {type: 'strong', children: [...], position: {...}}
         return Strings.wrap("{{text}}", "**");
       case "html": // {type: 'html', value: '...', position: {...}}
+      case "paragraph": // {type: 'paragraph', children: [...], position: {...}}
       case "text": // {type: 'text', value: '...', position: {...}}
         return Strings.wrap("{{text}}"); // identity
       default:
