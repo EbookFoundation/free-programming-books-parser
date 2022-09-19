@@ -1,0 +1,157 @@
+name: Generate fpb.json diffs
+
+on:                     # This pipeline is executed when:
+  pull_request:         # - A pull request (without merge conflicts)
+    branches:           #   over this base branches
+      - main
+    types:              #   is...
+      - opened          #   submitted
+      - synchronize     #   or more commits are pushed
+      - reopened        #   or reopened after closed (no merged)
+    paths:              # on any of this files or glob patterns:
+      - '.github/workflows/fpb-diffs.yml'  # - this workflow
+      - 'lib/**/*.js'                      # - any javascript file inside lib folder or it subfolders
+      - '*.js'                             # - any javascript file in root folder (maybe index.js, languages.js...)
+      - '*.json'                           # - any JSON file in root folder (maybe package.json...)
+
+permissions:
+  # needed to checkouts/branching
+  contents: read
+
+# This allows a subsequently queued workflow run to interrupt/wait for previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.head_ref || github.ref || github.run_id }}'
+  cancel-in-progress: false  # true: interrupt, false = wait for
+
+jobs:
+  init:
+    name: Prepare workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print checkout context
+        run: |
+          echo "REPOSITORY:   ${{ github.repository }}"
+          echo ""
+          echo "SHA:          ${{ github.sha }}"
+          echo "REF:          ${{ github.ref }}"
+          echo "BASE_REF:     ${{ github.base_ref }}"
+          echo "HEAD_REF:     ${{ github.head_ref }}"
+          echo ""
+          echo "PR_BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "PR_BASE_LBL:  ${{ github.event.pull_request.base.label }}"
+          echo "PR_BASE_REF:  ${{ github.event.pull_request.base.ref }}"
+          echo "PR_BASE_SHA:  ${{ github.event.pull_request.base.sha }}"
+          echo ""
+          echo "PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "PR_HEAD_LBL:  ${{ github.event.pull_request.head.label }}"
+          echo "PR_HEAD_REF:  ${{ github.event.pull_request.head.ref }}"
+          echo "PR_HEAD_SHA:  ${{ github.event.pull_request.head.sha }}"
+      ## ensure run both parsers on the same FPB source
+      - name: Checkout "Free Programming Books" repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1 # checkout latest commit
+          repository: EbookFoundation/free-programming-books
+          path: fpb
+      - name: Upload FPB artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: 'fpb-${{ github.run_id }}'
+          path: fpb
+
+  parser:
+    name: Run parser (${{ matrix.label }})
+    needs: [init]             # needs fpb artifact, wait for it
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:                             # run in parallel mode
+        include:
+          - label: BASE                   # a cloned job for the branch where BASE ref points to
+            fetch-depth: 1                # checkout latest commit
+            ref: ${{ github.base_ref }}
+          - label: HEAD                   # a cloned job for the branch where PR ref points to
+            fetch-depth: 1                # checkout latest commit
+            ref: ${{ github.ref }}
+      fail-fast: false                    # avoid fail and wait for both parallel jobs
+    steps:
+      - name: Checkout parser
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: ${{ matrix.fetch-depth }}
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.ref }}
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Install dependencies
+        run: |
+          npm install
+      - name: Download FPB artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: 'fpb-${{ github.run_id }}'
+          path: fpb
+      - name: Ensure necessary folders
+        run: mkdir -p "fpb-parser-data/${{ matrix.label }}"
+      - name: Run parser
+        run: npm start -- --output "fpb-parser-data/${{ matrix.label }}/fpb.json"
+      - name: List generated files
+        run: ls -R
+        working-directory: fpb-parser-data
+      - name: Upload FPB-data artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: 'fpb-parser-data-${{ github.run_id }}'
+          path: fpb-parser-data
+
+  diffs:
+    name: Run diffs
+    needs: [parser]         # Needs the generated "fbp.json" files zipped in fpb-parser-data artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download FPB-data artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: 'fpb-parser-data-${{ github.run_id }}'
+          path: fpb-parser-data
+      - name: 'Run diff folders: BASE <- HEAD'
+        run: |
+          git diff --no-index --patch --no-prefix -U3 --output="$DIFF_FILENAME" "BASE/" "HEAD/"
+        # true: bypass implicit --exit-code parameter related with --no-index, then notify error as GHA annotation
+        continue-on-error: true
+        env:
+          DIFF_FILENAME: fpb.diff
+        working-directory: fpb-parser-data
+      - name: Upload FPB-data artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: 'fpb-parser-data-${{ github.run_id }}'
+          path: fpb-parser-data
+
+      - name: Github reporter
+        run: |
+          echo "- BASE: \`$GITHUB_BASE_REF\`"           >> $GITHUB_STEP_SUMMARY
+          echo "- HEAD: \`$GITHUB_HEAD_REF\`"           >> $GITHUB_STEP_SUMMARY
+          echo ""                                       >> $GITHUB_STEP_SUMMARY
+          ## check if diff file is empty
+          if [ -s "$DIFF_FILENAME" ]; then
+            echo "⚠️ There are diffs between runs (BASE <- HEAD):" \
+                                                        >> $GITHUB_STEP_SUMMARY
+            ## output between a collapsible fence code block
+            echo "<details>"                            >> $GITHUB_STEP_SUMMARY
+            echo "<summary>🧬 Diff Details</summary>"   >> $GITHUB_STEP_SUMMARY
+            echo ""                                     >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`diff"                           >> $GITHUB_STEP_SUMMARY
+            cat $DIFF_FILENAME                          >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`"                               >> $GITHUB_STEP_SUMMARY
+            echo ""                                     >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✔️ There are no diffs between runs (BASE <- HEAD)."  \
+                                                        >> $GITHUB_STEP_SUMMARY
+          fi
+        working-directory: fpb-parser-data
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_HEAD_REF: ${{ github.ref }}
+          DIFF_FILENAME: fpb.diff
