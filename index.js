@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const remark = require("remark");
-const { Strings } = require("./lib/functions");
+const { Objects, Strings } = require("./lib/functions");
 const languages = require("./languages");
 const commandLineArgs = require("command-line-args");
 
@@ -81,7 +81,7 @@ function getLinkTextFromLinkNodes(children) {
   // visit nodes in depth
   const walk = (children, depth) => {
     // not AST, maybe plain text
-    if (!Array.isArray(children)) return Strings.toString(children);
+    if (!Array.isArray(children)) return Objects.toString(children);
     // AST children array nodes
     return children.reduce((text, node, index) => {
       if (!node || !node.type) return text; // not AST, maybe plain text
