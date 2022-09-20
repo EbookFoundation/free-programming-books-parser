@@ -146,6 +146,7 @@ jobs:
             cat $DIFF_FILENAME                          >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`"                               >> $GITHUB_STEP_SUMMARY
             echo ""                                     >> $GITHUB_STEP_SUMMARY
+            echo "</details>"                           >> $GITHUB_STEP_SUMMARY
           else
             echo "✔️ There are no diffs between runs (BASE <- HEAD)."  \
                                                         >> $GITHUB_STEP_SUMMARY
