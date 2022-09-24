@@ -139,7 +139,7 @@ function remarkTokenAST(node) {
       case "emphasis": // {type: 'emphasis', children: [...], position: {...}}
         return Strings.wrap("{{text}}", "_");
       case "heading": // {type: 'heading', depth: 1, children: [...], position: {...}}
-        return ["#".repeat(item.depth || 0), "{{text}}"].join("");
+        return ["#".repeat(node.depth || 0), "{{text}}"].join("");
       case "image": // {type: 'image', title: '...', url: '...', alt: '...', position: {...}}
         return "![{{text}}]({{url}})";
       case "inlineCode": // {type: 'inlineCode', value: '...', position: {...}}
