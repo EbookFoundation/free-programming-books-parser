@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const remark = require("remark");
+const { Objects, Strings } = require("./lib/functions");
 const languages = require("./languages");
 const commandLineArgs = require("command-line-args");
 
@@ -31,24 +32,25 @@ const excludes = [
  * @returns {string} an string with the name of the section related with the input heading
  */
 function getSectionNameFromHeadingContent(children) {
+  // visit nodes in depth
   const walk = (children, depth) =>
     children.reduce((text, node, index) => {
-      if (!node || !node.type) return text;
+      if (!node || !node.type) return text; // not AST, maybe plain text
       switch (node.type) {
         //
         // meaningfull nodes
         //
         case "emphasis":
-          text += "_" + walk(node.children, depth + 1) + "_";
+        case "strong":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: walk(node.children, depth + 1),
+          });
           break;
         case "inlineCode":
-          text += "`" + node.value + "`";
-          break;
-        case "strong":
-          text += "**" + walk(node.children, depth + 1) + "**";
-          break;
         case "text":
-          text += node.value;
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.value,
+          });
           break;
         //
         // skipped nodes
@@ -68,6 +70,100 @@ function getSectionNameFromHeadingContent(children) {
 }
 
 /**
+ * Parses the contents of a link from remark-parse into a readable format.
+ *
+ * @param {Array<Object>} children - an array of AST items defined by remark-parse for
+ *        the content of a link (A)
+ *
+ * @returns {string} an string with the text of the related input link
+ */
+function getLinkTextFromLinkNodes(children) {
+  // visit nodes in depth
+  const walk = (children, depth) => {
+    // not AST, maybe plain text
+    if (!Array.isArray(children)) return Objects.toString(children);
+    // AST children array nodes
+    return children.reduce((text, node, index) => {
+      if (!node || !node.type) return text; // not AST, maybe plain text
+      switch (node.type) {
+        //
+        // rebuild meaningfull nodes
+        //
+        case "image":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.alt || node.title,
+            url: node.url,
+          });
+          break;
+        case "inlineCode":
+        case "text":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: node.value,
+          });
+          break;
+        case "emphasis":
+        case "strong":
+          text += Strings.templater(remarkTokenAST(node), {
+            text: walk(node.children, depth + 1),
+          });
+          break;
+        //
+        // skipped nodes
+        //
+        default:
+          console.log(
+            "getLinkTextFromLinkNodes::skipped",
+            depth,
+            node.type,
+            node
+          );
+          break;
+      }
+      return text;
+    }, "");
+  };
+
+  return walk(children, 0);
+}
+
+/**
+ * Gets the template related with AST remark-parse node.
+ * @param {Object} node - AST node defined by remark-parse
+ * @returns {string} - the template string
+ */
+function remarkTokenAST(node) {
+  if (node && node.type) {
+    switch (node.type) {
+      case "break": // {type: 'break', position: {...}}
+        return "<br/>";
+      case "emphasis": // {type: 'emphasis', children: [...], position: {...}}
+        return Strings.wrap("{{text}}", "_");
+      case "heading": // {type: 'heading', depth: 1, children: [...], position: {...}}
+        return ["#".repeat(item.depth || 0), "{{text}}"].join("");
+      case "image": // {type: 'image', title: '...', url: '...', alt: '...', position: {...}}
+        return "![{{text}}]({{url}})";
+      case "inlineCode": // {type: 'inlineCode', value: '...', position: {...}}
+        return Strings.wrap("{{text}}", "`");
+      case "link": // {type: 'link', title: '...', url: '...', children: [...], position: {...}}
+        return "[{{text}}]({{url}})";
+      case "list": // {type: 'list', ordered: false, start: null, spread: false, children: [...], position: {...}}
+      case "listItem": // {type: 'listItem', spread: false, checked: null, children: [...], position: {...}}
+        // TODO: generate token for list/listItem
+        break;
+      case "strong": // {type: 'strong', children: [...], position: {...}}
+        return Strings.wrap("{{text}}", "**");
+      case "html": // {type: 'html', value: '...', position: {...}}
+      case "paragraph": // {type: 'paragraph', children: [...], position: {...}}
+      case "text": // {type: 'text', value: '...', position: {...}}
+        return Strings.wrap("{{text}}"); // identity
+      default:
+        break;
+    }
+  }
+  throw new Error("Unrecognized remark node type: " + (node && node.type));
+}
+
+/**
  * Parses a list item generated from remark-parse into a readable format.
  *
  * remark-parse parses a markdown file into a long, intricate json.
@@ -81,17 +177,15 @@ function getSectionNameFromHeadingContent(children) {
  * @return {Object} Returns an Object containing details about the piece of media.
  */
 function parseListItem(listItem) {
-  let stripParens = function (s) {
-    if (s.slice(0, 1) === "(" && s.slice(-1) === ")") return s.slice(1, -1);
-    return s;
-  };
   let entry = {};
   let s = ""; // If we need to build up a string over multiple listItem elements
   let leftParen,
     rightParen = -1; // If we need to parse parenthesized text
-  const [link, ...otherStuff] = listItem; // head of listItem = url, the rest is "other stuff"
+  // head of listItem = url, the rest is "other stuff"
+  const [link, ...otherStuff] = listItem;
   entry.url = link.url;
-  entry.title = link.children[0].value;
+  // link.children || link.value => weak way to check if link.type === "link"
+  entry.title = getLinkTextFromLinkNodes(link.children || link.value);
   // remember to get OTHER STUFF!! remember there may be multiple links!
   for (let i of otherStuff) {
     if (s === "") {
@@ -117,7 +211,7 @@ function parseListItem(listItem) {
         // other links found
         if (entry.otherLinks === undefined) entry.otherLinks = [];
         entry.otherLinks.push({
-          title: stripParens(i.children[0].value),
+          title: Strings.stripParens(getLinkTextFromLinkNodes(i.children)),
           url: i.url,
         });
         // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
@@ -154,7 +248,9 @@ function parseListItem(listItem) {
           s += i.value;
         } else {
           // finally, we have reached the end of the note
-          entry.notes.push(stripParens(s + i.value.slice(0, rightParen + 1)));
+          entry.notes.push(
+            Strings.stripParens(s + i.value.slice(0, rightParen + 1))
+          );
           s = "";
           // this is a copypaste of another block of code. probably not a good thing tbh.
           leftParen = i.value.indexOf("(");
