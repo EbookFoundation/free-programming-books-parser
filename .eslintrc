@@ -7,16 +7,16 @@
   },
   "extends": [
     // append eslint rules
-    "eslint:recommended"
+    "eslint:recommended",
+    // append prettier config
+    "plugin:prettier/recommended"
   ],
   "overrides": [],
   "parserOptions": {
     "ecmaVersion": "latest"
   },
+  "plugins": ["prettier"],
   "rules": {
-    "indent": ["error", 2, { "SwitchCase": 1 }],
-    "linebreak-style": ["error", "unix"],
-    "quotes": ["error", "double"],
-    "semi": ["error", "always"]
+    "prettier/prettier": "error"
   }
 }
