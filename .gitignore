@@ -2,6 +2,7 @@ node_modules/
 *.log
 *.md
 !README.md
-package-lock.json
 *.txt
 *.json
+!package.json
+!package-lock.json
