@@ -8,6 +8,8 @@
     "url": "git+https://github.com/EbookFoundation/free-programming-books-parser.git"
   },
   "scripts": {
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
     "lint": "cross-env DEBUG=eslint:cli-engine eslint .",
     "lint:fix": "cross-env DEBUG=eslint:cli-engine eslint --fix .",
     "start": "node index.js",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "eslint": "^8.24.0"
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1"
   }
 }

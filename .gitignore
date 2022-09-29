@@ -5,5 +5,6 @@ node_modules/
 *.txt
 *.json
 !.eslintrc.json
+!.prettierrc.json
 !package.json
 !package-lock.json
