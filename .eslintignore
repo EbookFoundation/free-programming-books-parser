@@ -1,0 +1,11 @@
+# Ignore dependencies:
+node_modules
+
+# Ignore generated artifacts:
+build
+dist
+
+# Ignore generated files:
+fpb.json
+fpb-*.json
+fpb.*.json
