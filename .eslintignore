@@ -4,6 +4,7 @@ node_modules
 # Ignore generated artifacts:
 build
 dist
+coverage
 
 # Ignore generated files:
 fpb.json

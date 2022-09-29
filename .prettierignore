@@ -9,6 +9,7 @@
 # Ignore generated artifacts:
 build
 dist
+coverage
 
 # Ignore generated files:
 fpb.json
