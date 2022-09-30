@@ -48,3 +48,8 @@ end_of_line = crlf
 ; YML config files - match it own default syntax
 [*.{yaml,yml}]
 indent_size = 2
+
+; rc config files - match it own default syntax as JSON
+[.*rc]
+indent_size = 2
+quote_type = double

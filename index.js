@@ -34,6 +34,7 @@ const excludes = [
 function getSectionNameFromHeadingContent(children) {
   // visit nodes in depth
   const walk = (children, depth) =>
+    // eslint-disable-next-line no-unused-vars
     children.reduce((text, node, index) => {
       if (!node || !node.type) return text; // not AST, maybe plain text
       switch (node.type) {
@@ -83,6 +84,7 @@ function getLinkTextFromLinkNodes(children) {
     // not AST, maybe plain text
     if (!Array.isArray(children)) return Objects.toString(children);
     // AST children array nodes
+    // eslint-disable-next-line no-unused-vars
     return children.reduce((text, node, index) => {
       if (!node || !node.type) return text; // not AST, maybe plain text
       switch (node.type) {
@@ -282,7 +284,7 @@ function getLangFromFilename(filename) {
   const dot = filename.lastIndexOf(".");
   let lang = filename.slice(dash + 1, dot).replace(/_/, "-");
   let isSubject = false;
-  if (!languages.hasOwnProperty(lang)) {
+  if (!Object.prototype.hasOwnProperty.call(languages, lang)) {
     if (/^[a-z]{2}$/.test(lang) || /^[a-z]{2}-[A-Z]{2}$/.test(lang)) {
       return "";
     }
@@ -400,7 +402,7 @@ function parseMarkdown(doc) {
       // looks really ugly, maybe try to refine output later
       let errStart = JSON.stringify(item.position.start.line);
       let errEnd = JSON.stringify(item.position.end.line);
-      str = `Error at line ${errStart} - line ${errEnd}.`;
+      let str = `Error at line ${errStart} - line ${errEnd}.`;
       errors.push(str);
     }
   });
@@ -488,10 +490,10 @@ function parseAll(directories, output) {
   };
 
   // Errors
-  let allErrors = {
-    type: "root",
-    directories: rootErrors,
-  };
+  // let allErrors = {
+  //   type: "root",
+  //   directories: rootErrors,
+  // };
   fs.writeFileSync(output, JSON.stringify(rootJson, null, 3), function (err) {
     if (err) {
       console.log(err);

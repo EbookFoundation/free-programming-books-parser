@@ -8,8 +8,13 @@
     "url": "git+https://github.com/EbookFoundation/free-programming-books-parser.git"
   },
   "scripts": {
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "cross-env DEBUG=eslint:cli-engine eslint .",
+    "lint:fix": "cross-env DEBUG=eslint:cli-engine eslint --fix .",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "bin": {
     "fpb-parse": "./index.js"
@@ -19,5 +24,13 @@
   "dependencies": {
     "command-line-args": "^5.2.0",
     "remark": "^13.0.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "eslint": "^8.24.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^29.1.1",
+    "prettier": "^2.7.1"
   }
 }

@@ -1,0 +1,39 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run FPB parser",
+      "type": "node",
+      "request": "launch",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/index.js",
+      "args": [
+        "--input",
+        "${workspaceFolder}/../free-programming-books/books",
+        "--input",
+        "${workspaceFolder}/../free-programming-books/casts",
+        "--input",
+        "${workspaceFolder}/../free-programming-books/courses",
+        "--input",
+        "${workspaceFolder}/../free-programming-books/more",
+        "--output",
+        "${workspaceFolder}/fpb.json"
+      ]
+    },
+    {
+      "name": "Debug Jest Tests",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceFolder}/node_modules/jest/bin/jest.js",
+        "--runInBand"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}
