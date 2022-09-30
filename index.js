@@ -230,7 +230,13 @@ function parseListItem(listItem) {
       }
       if (insideAuthors && i.type === "inlineCode") {
         // author role found. append rebuilding markdown format and then move on
+        const temp = entry.author.trim();
         entry.author += "`" + i.value + "`";
+        // relator term should be valid and at the start of each creator chunk, so check previous
+        if (temp.length > 0 && !temp.endsWith(",")) {
+          entry.manualReviewRequired = true; // mark for view and edit manually
+          entry.hasAuthorWarnings = true; // mark the reason
+        }
       }
       if (
         i.type === "emphasis" &&
@@ -290,8 +296,19 @@ function parseListItem(listItem) {
     }
   }
 
-  // if present, clean authors string
-  entry.author && (entry.author = entry.author.trim());
+  // if creator field is valued...
+  if (entry.author) {
+    // clean creators string
+    entry.author = entry.author.trim();
+    // ensure that creators not ends with invalid tokens
+    if (
+      // each creator delimiter || inlineCode relator term token
+      [",", "`"].some((token) => entry.author.endsWith(token))
+    ) {
+      entry.manualReviewRequired = true; // mark for view and edit manually
+      entry.hasAuthorWarnings = true; // mark the reason
+    }
+  }
 
   return entry;
 }
