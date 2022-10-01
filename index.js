@@ -5,6 +5,7 @@ const path = require("path");
 const remark = require("remark");
 const { Objects, Strings } = require("./lib/functions");
 const languages = require("./languages");
+const { findByCode: findMarcRelatorByCode } = require("./lib/marcrelators");
 const commandLineArgs = require("command-line-args");
 
 const optionDefinitions = [
@@ -187,16 +188,60 @@ function parseListItem(listItem) {
   // link.children || link.value => weak way to check if link.type === "link"
   entry.title = getLinkTextFromLinkNodes(link.children || link.value);
   // remember to get OTHER STUFF!! remember there may be multiple links!
+  let insideAuthors = false; // are we still parsing authors across AST nodes?
   for (let i of otherStuff) {
     if (s === "") {
       // this is almost always, except for when we are parsing a multi-element note
-      if (i.type === "text" && i.value.slice(0, 3) === " - ") {
-        // author found
-        let parenIndex = i.value.indexOf("(");
-        if (parenIndex === -1) {
-          entry.author = i.value.slice(3).trim();
-        } else {
-          entry.author = i.value.slice(3, parenIndex).trim(); // go from " - " until the first "("
+      if (i.type === "text") {
+        const text = i.value;
+        const parenIndex = text.indexOf("(");
+
+        if (insideAuthors) {
+          // an author with role entity found. (maybe after some inlineCode node)
+          // so, append until next note token, if any
+          entry.author +=
+            parenIndex === -1 ? text : text.substring(0, parenIndex);
+        }
+
+        if (text.startsWith(" - ")) {
+          // authors found
+          insideAuthors = true;
+          entry.author =
+            parenIndex === -1
+              ? text.slice(3) // go from " - " until the last char
+              : text.slice(3, parenIndex); // go from " - " until the first "("
+        }
+
+        if (parenIndex !== -1) {
+          // notes found (currently assumes no nested parentheses)
+          insideAuthors = false;
+          if (entry.notes === undefined) entry.notes = [];
+          leftParen = parenIndex;
+          while (leftParen != -1) {
+            rightParen = text.indexOf(")", leftParen);
+            if (rightParen === -1) {
+              // there must be some *emphasis* found
+              s += text.slice(leftParen);
+              break;
+            }
+            entry.notes.push(text.slice(leftParen + 1, rightParen));
+            leftParen = text.indexOf("(", rightParen);
+          }
+        }
+      }
+      if (insideAuthors && i.type === "inlineCode") {
+        // author role found. append rebuilding markdown format and then move on
+        const temp = entry.author.trim();
+        entry.author += "`" + i.value + "`";
+        // relator term should be... valid
+        if (!getRelatorTermFromNodeValue(i.value)) {
+          entry.manualReviewRequired = true; // mark for view and edit manually
+          entry.hasRelatorTermWarnings = true; // mark the reason
+        }
+        // ... and at the start of each creator chunk, so check previous
+        if (temp.length > 0 && !temp.endsWith(",")) {
+          entry.manualReviewRequired = true; // mark for view and edit manually
+          entry.hasAuthorWarnings = true; // mark the reason
         }
       }
       if (
@@ -206,6 +251,7 @@ function parseListItem(listItem) {
       ) {
         // access notes found (currently assumes exactly one child, so far this is always the case)
         entry.accessNotes = i.children[0].value.slice(1, -1);
+        insideAuthors = false;
       }
       if (i.type === "link") {
         // other links found
@@ -215,23 +261,10 @@ function parseListItem(listItem) {
           url: i.url,
         });
         // entry.otherLinks = [...entry.otherLinks, {title: i.children[0].value, url: i.url}];      // <-- i wish i could get this syntax to work with arrays
-      }
-      if (i.type === "text" && i.value.indexOf("(") !== -1) {
-        // notes found (currently assumes no nested parentheses)
-        if (entry.notes === undefined) entry.notes = [];
-        leftParen = i.value.indexOf("(");
-        while (leftParen != -1) {
-          rightParen = i.value.indexOf(")", leftParen);
-          if (rightParen === -1) {
-            // there must be some *emphasis* found
-            s += i.value.slice(leftParen);
-            break;
-          }
-          entry.notes.push(i.value.slice(leftParen + 1, rightParen));
-          leftParen = i.value.indexOf("(", rightParen);
-        }
+        insideAuthors = false;
       }
     } else {
+      insideAuthors = false;
       // for now we assume that all previous ifs are mutually exclusive with this, may polish later
       if (i.type === "emphasis") {
         // this is the emphasis, add it in boldface and move on
@@ -268,7 +301,43 @@ function parseListItem(listItem) {
       }
     }
   }
+
+  // if creator field is valued...
+  if (entry.author) {
+    // clean creators string
+    entry.author = entry.author.trim();
+    // ensure that creators not ends with invalid tokens
+    if (
+      // each creator delimiter || inlineCode relator term token
+      [",", "`"].some((token) => entry.author.endsWith(token))
+    ) {
+      entry.manualReviewRequired = true; // mark for view and edit manually
+      entry.hasAuthorWarnings = true; // mark the reason
+    }
+  }
+
   return entry;
+}
+
+/**
+ * Determines the MARC relator of a certain value based on the format from the
+ * FreeEbookFoundation GitHub page
+ *
+ * @param {string} value
+ * @return {MarcRelatorTerm | null | false} The relator term item.
+ *    `null` if not found, `false` if not valid.
+ */
+function getRelatorTermFromNodeValue(value) {
+  // must be valued
+  if (!value) return false;
+  // relator terms always ends with `.:`
+  let code = String(value).trim();
+  if (!code.endsWith(".:")) {
+    return false;
+  }
+  code = code.slice(0, -2); // remove `.:`
+  // must be defined in the MARC relator collection
+  return findMarcRelatorByCode(code);
 }
 
 /**
