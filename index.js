@@ -5,6 +5,7 @@ const path = require("path");
 const remark = require("remark");
 const { Objects, Strings } = require("./lib/functions");
 const languages = require("./languages");
+const { findByCode: findMarcRelatorByCode } = require("./lib/marcrelators");
 const commandLineArgs = require("command-line-args");
 
 const optionDefinitions = [
@@ -232,7 +233,12 @@ function parseListItem(listItem) {
         // author role found. append rebuilding markdown format and then move on
         const temp = entry.author.trim();
         entry.author += "`" + i.value + "`";
-        // relator term should be valid and at the start of each creator chunk, so check previous
+        // relator term should be... valid
+        if (!getRelatorTermFromNodeValue(i.value)) {
+          entry.manualReviewRequired = true; // mark for view and edit manually
+          entry.hasRelatorTermWarnings = true; // mark the reason
+        }
+        // ... and at the start of each creator chunk, so check previous
         if (temp.length > 0 && !temp.endsWith(",")) {
           entry.manualReviewRequired = true; // mark for view and edit manually
           entry.hasAuthorWarnings = true; // mark the reason
@@ -311,6 +317,27 @@ function parseListItem(listItem) {
   }
 
   return entry;
+}
+
+/**
+ * Determines the MARC relator of a certain value based on the format from the
+ * FreeEbookFoundation GitHub page
+ *
+ * @param {string} value
+ * @return {MarcRelatorTerm | null | false} The relator term item.
+ *    `null` if not found, `false` if not valid.
+ */
+function getRelatorTermFromNodeValue(value) {
+  // must be valued
+  if (!value) return false;
+  // relator terms always ends with `.:`
+  let code = String(value).trim();
+  if (!code.endsWith(".:")) {
+    return false;
+  }
+  code = code.slice(0, -2); // remove `.:`
+  // must be defined in the MARC relator collection
+  return findMarcRelatorByCode(code);
 }
 
 /**
